@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Athena — Sign up</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --panel-1:#2A1A45;
+    --panel-2:#4B2E74;
+    --accent:#7C4DB8;
+    --accent-dark:#583A82;
+    --ink:#211B2B;
+    --muted:#6E6779;
+    --line:#E7E3EE;
+    --card:#FFFFFF;
+    --bg:#FAFAFC;
+    --error:#B3392B;
+    --error-bg:#FBEAE7;
+    --success:#2F7A54;
+    --success-bg:#EAF6EF;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',system-ui,sans-serif;color:var(--ink);background:var(--bg);}
+  a{color:inherit;}
+
+  .shell{display:grid;grid-template-columns:minmax(280px,34%) 1fr;min-height:100vh;}
+  @media (max-width:840px){ .shell{grid-template-columns:1fr;} }
+
+  .panel{
+    position:relative;
+    z-index:0;
+    background:linear-gradient(160deg,var(--panel-1),var(--panel-2) 75%);
+    color:#F3EEFA;
+    padding:56px 44px;
+    display:flex;flex-direction:column;justify-content:space-between;
+    overflow:hidden;
+  }
+  @media (max-width:840px){ .panel{padding:36px 28px 48px;} }
+
+
+  .brand-eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#C9B8E6;margin:0 0 6px;}
+  .brand-name{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(38px,6vw,52px);line-height:1;margin:0;}
+  .brand-sub{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#D8CBEE;margin:6px 0 0;font-weight:600;}
+
+  .panel-steps{position:relative;z-index:1;}
+  .panel-steps p{font-size:13.5px;color:#D3C4EB;line-height:1.7;margin:0 0 10px;}
+  .panel-steps .step{display:flex;gap:10px;margin-bottom:14px;}
+  .step-num{
+    width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,.4);
+    display:flex;align-items:center;justify-content:center;font-size:11.5px;flex-shrink:0;color:#F3EEFA;
+  }
+  .step-text{font-size:13.5px;color:#D3C4EB;line-height:1.5;padding-top:2px;}
+
+  .content{display:flex;align-items:center;justify-content:center;padding:48px 24px;}
+  .form-wrap{width:100%;max-width:420px;}
+
+  .form-wrap h1{font-family:'Fraunces',serif;font-weight:500;font-size:26px;margin:0 0 6px;}
+  .form-wrap p.lede{color:var(--muted);font-size:14.5px;margin:0 0 28px;line-height:1.5;}
+
+  label{display:block;font-size:13px;font-weight:600;margin:0 0 6px;color:var(--ink);}
+  .hint{font-size:12px;color:var(--muted);font-weight:400;margin-top:4px;}
+  .field{margin-bottom:16px;}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  input[type=email],input[type=password],input[type=text],input[type=tel],select{
+    width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:8px;
+    font-size:14.5px;font-family:inherit;color:var(--ink);background:#fff;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  select{
+    appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236E6779' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 13px center;padding-right:36px;
+  }
+  select:invalid{color:var(--muted);}
+  input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,77,184,.15);}
+
+  .section-label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:26px 0 14px;}
+  .section-label:first-of-type{margin-top:0;}
+
+  .btn{
+    width:100%;padding:12px 16px;border:none;border-radius:8px;
+    background:var(--accent);color:#fff;font-size:14.5px;font-weight:600;
+    cursor:pointer;transition:background .15s;font-family:inherit;margin-top:8px;
+  }
+  .btn:hover{background:var(--accent-dark);}
+  .btn:disabled{opacity:.55;cursor:not-allowed;}
+
+  .msg{border-radius:8px;padding:12px 14px;font-size:13.5px;line-height:1.5;margin:0 0 18px;display:none;}
+  .msg.show{display:block;}
+  .msg.error{background:var(--error-bg);color:var(--error);}
+  .msg.success{background:var(--success-bg);color:var(--success);}
+  .msg.info{background:#F1ECFA;color:var(--accent-dark);}
+
+  .view{display:none;}
+  .view.active{display:block;}
+
+  .foot-note{margin-top:24px;font-size:12.5px;color:var(--muted);text-align:center;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="panel">
+    <div>
+      <p class="brand-eyebrow">Soaphrodite Labs</p>
+      <h1 class="brand-name">Athena</h1>
+      <p class="brand-sub">Business Hub</p>
+    </div>
+
+    <div class="panel-steps">
+      <div class="step"><div class="step-num">1</div><div class="step-text">Sign up with your business plan code</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-text">We verify your details — usually within 24 hours</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-text">Log in and set up your business</div></div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="form-wrap">
+
+      <!-- SIGNUP FORM -->
+      <div id="view-signup" class="view active">
+        <h1>Create your account</h1>
+        <p class="lede">You'll need the business plan code from your Soaphrodite Labs purchase.</p>
+
+        <div id="signup-msg" class="msg"></div>
+
+        <form id="signup-form">
+          <div class="field">
+            <label for="business-name">Business name</label>
+            <input type="text" id="business-name" required />
+          </div>
+
+          <div class="field">
+            <label for="email">Email address</label>
+            <input type="email" id="email" required autocomplete="email" />
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="code">Business plan code</label>
+              <input type="text" id="code" required autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="contact-number">Contact number</label>
+              <input type="tel" id="contact-number" required />
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="password">Password</label>
+              <input type="password" id="password" required autocomplete="new-password" minlength="8" />
+            </div>
+            <div class="field">
+              <label for="confirm-password">Confirm password</label>
+              <input type="password" id="confirm-password" required autocomplete="new-password" minlength="8" />
+            </div>
+          </div>
+
+          <p class="section-label">Security questions</p>
+          <p class="hint" style="margin:-10px 0 16px;">These are used to verify you if you ever forget your password — pick things only you'd know.</p>
+
+          <div class="field">
+            <label for="q1">Question 1</label>
+            <select id="q1" class="q-select" required>
+              <option value="" disabled selected>Choose a question</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="a1">Answer 1</label>
+            <input type="text" id="a1" required autocomplete="off" />
+          </div>
+
+          <div class="field">
+            <label for="q2">Question 2</label>
+            <select id="q2" class="q-select" required>
+              <option value="" disabled selected>Choose a question</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="a2">Answer 2</label>
+            <input type="text" id="a2" required autocomplete="off" />
+          </div>
+
+          <div class="field">
+            <label for="q3">Question 3</label>
+            <select id="q3" class="q-select" required>
+              <option value="" disabled selected>Choose a question</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="a3">Answer 3</label>
+            <input type="text" id="a3" required autocomplete="off" />
+          </div>
+
+          <button type="submit" class="btn" id="signup-submit">Create account</button>
+        </form>
+
+        <p class="foot-note">Already have an account? <a href="login.html">Log in</a>.</p>
+      </div>
+
+      <!-- SUCCESS / PENDING -->
+      <div id="view-pending" class="view">
+        <h1>You're almost set</h1>
+        <div class="msg show success">
+          Your account has been created and is now pending activation. Our team verifies
+          your email and code against your Soaphrodite Labs purchase — please allow up to
+          24 hours. You'll be able to log in with the password you just set once it's active.
+        </div>
+        <a href="login.html"><button class="btn">Go to log in</button></a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  // ---- Configure for this project ----------------------------------
+  const SUPABASE_URL = 'https://nitbsqhvjhdappgsghci.supabase.co';
+  const SUPABASE_ANON_KEY = 'PASTE_YOUR_ANON_KEY_HERE';
+  // --------------------------------------------------------------------
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const $ = (id) => document.getElementById(id);
+
+  function showMsg(el, text, type){
+    el.textContent = text;
+    el.className = 'msg show ' + type;
+  }
+  function hideMsg(el){
+    el.className = 'msg';
+  }
+
+  // ---------------- Security question options ----------------
+  const SECURITY_QUESTIONS = [
+    "What was your first pet's name?",
+    "What was the name of your first school?",
+    "What is your mother's maiden name?",
+    "What city were you born in?",
+    "What was your childhood nickname?",
+    "What is the name of your favorite teacher?",
+    "What was the make of your first car?",
+    "What is your favorite book?",
+    "What street did you grow up on?",
+    "What was your first job?",
+  ];
+
+  ['q1','q2','q3'].forEach((id) => {
+    const select = $(id);
+    SECURITY_QUESTIONS.forEach((q) => {
+      const opt = document.createElement('option');
+      opt.value = q;
+      opt.textContent = q;
+      select.appendChild(opt);
+    });
+  });
+
+  $('signup-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('signup-msg');
+    hideMsg(msg);
+
+    const password = $('password').value;
+    const confirmPassword = $('confirm-password').value;
+    if (password !== confirmPassword) {
+      showMsg(msg, 'Passwords do not match.', 'error');
+      return;
+    }
+    if (password.length < 8) {
+      showMsg(msg, 'Password must be at least 8 characters.', 'error');
+      return;
+    }
+
+    const businessName = $('business-name').value.trim();
+    const email = $('email').value.trim();
+    const code = $('code').value.trim();
+    const contactNumber = $('contact-number').value.trim();
+    const q1 = $('q1').value.trim(), a1 = $('a1').value.trim();
+    const q2 = $('q2').value.trim(), a2 = $('a2').value.trim();
+    const q3 = $('q3').value.trim(), a3 = $('a3').value.trim();
+
+    if (new Set([q1, q2, q3]).size < 3) {
+      showMsg(msg, 'Please choose three different security questions.', 'error');
+      return;
+    }
+
+    const btn = $('signup-submit');
+    btn.disabled = true; btn.textContent = 'Checking code…';
+
+    // 1. Validate the code before creating any auth account.
+    const { data: codeValid, error: codeError } = await supabase.rpc('fn_check_code_valid', { p_code: code });
+
+    if (codeError || !codeValid) {
+      showMsg(msg, 'That business plan code is invalid or has already been used. Double-check it or contact info@soaphroditeph.com.', 'error');
+      btn.disabled = false; btn.textContent = 'Create account';
+      return;
+    }
+
+    // 2. Create the auth account.
+    btn.textContent = 'Creating your account…';
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
+
+    if (signUpError) {
+      showMsg(msg, signUpError.message || 'We could not create your account. Please try again.', 'error');
+      btn.disabled = false; btn.textContent = 'Create account';
+      return;
+    }
+
+    if (!signUpData.session) {
+      // Email confirmation is likely required in this Supabase project's Auth
+      // settings. For this flow to work in one step, disable "Confirm email"
+      // under Authentication > Providers > Email, or add a confirmation step
+      // here before continuing.
+      showMsg(msg, 'Account created — please check your email to confirm it, then come back and log in to finish setup.', 'info');
+      btn.disabled = false; btn.textContent = 'Create account';
+      return;
+    }
+
+    // 3. Complete the business signup (validates code again server-side, hashes answers).
+    btn.textContent = 'Finishing setup…';
+    const { error: completeError } = await supabase.rpc('fn_complete_business_signup', {
+      p_business_name: businessName,
+      p_email: email,
+      p_code: code,
+      p_contact_number: contactNumber,
+      p_security_q1: q1, p_answer_1: a1,
+      p_security_q2: q2, p_answer_2: a2,
+      p_security_q3: q3, p_answer_3: a3,
+    });
+
+    if (completeError) {
+      showMsg(msg, completeError.message || 'Something went wrong finishing your signup. Contact info@soaphroditeph.com for help.', 'error');
+      btn.disabled = false; btn.textContent = 'Create account';
+      return;
+    }
+
+    // 4. Sign out (account is pending activation, not active yet) and show confirmation.
+    await supabase.auth.signOut();
+    document.getElementById('view-signup').classList.remove('active');
+    document.getElementById('view-pending').classList.add('active');
+  });
+</script>
+</body>
+</html>
