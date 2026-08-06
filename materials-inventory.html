@@ -200,8 +200,20 @@
           <button class="btn btn-ghost btn-sm" id="export-btn">Export CSV</button>
           <button class="btn btn-ghost btn-sm" id="import-btn">Import CSV</button>
           <input type="file" id="import-file" accept=".csv" style="display:none;" />
+          <button class="btn btn-ghost btn-sm" id="bulk-stock-btn">Bulk Edit Stock</button>
           <button class="btn" id="toggle-add-btn">+ Add Material</button>
         </div>
+      </div>
+
+      <div class="card" id="bulk-stock-bar" style="display:none;padding:14px 20px;margin-bottom:16px;background:var(--accent-soft);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <p style="margin:0;font-size:13px;color:var(--accent-ink);">Editing stock quantities directly — changes are logged as a "bulk edit" in each material's history.</p>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-sm" id="bulk-stock-save">Save Stock Changes</button>
+            <button class="btn btn-sm btn-ghost" id="bulk-stock-cancel">Cancel</button>
+          </div>
+        </div>
+        <div id="bulk-stock-msg" class="msg" style="margin-top:10px;"></div>
       </div>
 
       <div id="import-msg" class="msg"></div>
@@ -444,6 +456,8 @@
 
   let products = [];
 
+  let bulkStockMode = false;
+
   async function loadProducts(){
     const { data, error } = await supabase.rpc('fn_list_ingredients_with_stock');
     const tbody = $('product-tbody');
@@ -460,17 +474,20 @@
     data.forEach((p) => {
       const stockClass = p.current_stock <= 0 ? 'stock-zero' : (p.reorder_level && p.current_stock <= p.reorder_level ? 'stock-low' : '');
       const tr = document.createElement('tr');
+      const stockCell = bulkStockMode
+        ? `<input type="number" class="bulk-stock-input" data-id="${p.id}" data-original="${p.current_stock}" value="${p.current_stock}" step="0.0001" style="width:110px;" />`
+        : `<span class="stock-badge ${stockClass}">${p.current_stock}</span>`;
       tr.innerHTML = `
         <td>${p.name}</td>
         <td>${p.unit || '—'}</td>
         <td>${p.cost_per_unit != null ? '₱' + Number(p.cost_per_unit).toFixed(4) : '—'}</td>
         <td>${p.supplier || '—'}</td>
-        <td><span class="stock-badge ${stockClass}">${p.current_stock}</span></td>
+        <td>${stockCell}</td>
         <td style="white-space:nowrap;">
-          <button class="btn btn-sm btn-ghost stock-btn">Adjust</button>
+          <button class="btn btn-sm btn-ghost stock-btn" ${bulkStockMode ? 'disabled' : ''}>Adjust</button>
           <button class="btn btn-sm btn-ghost history-btn">History</button>
-          <button class="btn btn-sm btn-ghost edit-btn">Edit</button>
-          <button class="btn btn-sm btn-ghost delete-btn" style="color:var(--error);">Delete</button>
+          <button class="btn btn-sm btn-ghost edit-btn" ${bulkStockMode ? 'disabled' : ''}>Edit</button>
+          <button class="btn btn-sm btn-ghost delete-btn" style="color:var(--error);" ${bulkStockMode ? 'disabled' : ''}>Delete</button>
         </td>
       `;
       tr.querySelector('.stock-btn').addEventListener('click', () => openStockModal(p));
@@ -480,6 +497,61 @@
       tbody.appendChild(tr);
     });
   }
+
+  // ---------------- Bulk stock edit ----------------
+  $('bulk-stock-btn').addEventListener('click', () => {
+    bulkStockMode = true;
+    $('bulk-stock-bar').style.display = 'block';
+    $('add-form-card').classList.remove('show');
+    loadProducts();
+  });
+  $('bulk-stock-cancel').addEventListener('click', () => {
+    bulkStockMode = false;
+    $('bulk-stock-bar').style.display = 'none';
+    loadProducts();
+  });
+
+  $('bulk-stock-save').addEventListener('click', async () => {
+    const msg = $('bulk-stock-msg');
+    hideMsg(msg);
+    const inputs = document.querySelectorAll('.bulk-stock-input');
+    const changes = [];
+    inputs.forEach((el) => {
+      const original = parseFloat(el.dataset.original);
+      const next = parseFloat(el.value);
+      if (!isNaN(next) && next !== original) {
+        changes.push({ id: el.dataset.id, delta: next - original });
+      }
+    });
+
+    if (changes.length === 0) {
+      showMsg(msg, 'No changes to save.', 'error');
+      return;
+    }
+
+    const btn = $('bulk-stock-save');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    let failed = 0;
+    for (const c of changes) {
+      const { error } = await supabase.rpc('fn_adjust_ingredient_stock', {
+        p_ingredient_id: c.id, p_change_qty: c.delta, p_reason: 'manual', p_note: 'Bulk stock edit',
+      });
+      if (error) failed++;
+    }
+
+    btn.disabled = false; btn.textContent = 'Save Stock Changes';
+
+    if (failed > 0) {
+      showMsg(msg, `Saved ${changes.length - failed} of ${changes.length} changes — ${failed} failed.`, 'error');
+    } else {
+      showMsg(msg, `Updated stock for ${changes.length} material${changes.length > 1 ? 's' : ''}.`, 'success');
+    }
+
+    bulkStockMode = false;
+    setTimeout(() => { $('bulk-stock-bar').style.display = 'none'; }, 1200);
+    loadProducts();
+  });
 
   // ---------------- Add material ----------------
   $('toggle-add-btn').addEventListener('click', () => {
