@@ -198,6 +198,17 @@
         <button class="btn" id="toggle-add-btn">+ Add Product</button>
       </div>
 
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:22px;">
+        <div class="card card-pad">
+          <p style="margin:0 0 4px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;">Total cost on hand</p>
+          <p id="total-cost-value" style="margin:0;font-family:'Fraunces',serif;font-weight:600;font-size:22px;">₱0.00</p>
+        </div>
+        <div class="card card-pad">
+          <p style="margin:0 0 4px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;">Total selling value on hand</p>
+          <p id="total-selling-value" style="margin:0;font-family:'Fraunces',serif;font-weight:600;font-size:22px;">₱0.00</p>
+        </div>
+      </div>
+
       <div class="card add-form" id="add-form-card">
         <div class="card-pad">
           <h3 style="font-family:'Fraunces',serif;font-weight:600;font-size:16px;margin:0 0 14px;">New product</h3>
@@ -232,7 +243,7 @@
       <div class="card">
         <table>
           <thead>
-            <tr><th>Product</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th><th></th></tr>
+            <tr><th>Product</th><th>SKU</th><th>Category</th><th>Cost/Item</th><th>Price</th><th>Stock</th><th></th></tr>
           </thead>
           <tbody id="product-tbody"></tbody>
         </table>
@@ -337,19 +348,27 @@
     if (error || !data || data.length === 0) {
       $('empty-state').style.display = 'block';
       products = [];
+      $('total-cost-value').textContent = peso(0);
+      $('total-selling-value').textContent = peso(0);
       return;
     }
     $('empty-state').style.display = 'none';
     products = data;
 
+    const costByProductId = await computeProductCosts(products.map(p => p.id));
+
+    let totalCost = 0, totalSelling = 0;
+
     data.forEach((p) => {
       const stockClass = p.current_stock <= 0 ? 'stock-zero' : (p.reorder_level && p.current_stock <= p.reorder_level ? 'stock-low' : '');
+      const costPerItem = costByProductId[p.id];
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${p.name}</td>
         <td>${p.sku || '—'}</td>
         <td>${p.category || '—'}</td>
-        <td>${p.price != null ? '₱' + Number(p.price).toFixed(2) : '—'}</td>
+        <td>${costPerItem != null ? peso(costPerItem) : '—'}</td>
+        <td>${p.price != null ? peso(p.price) : '—'}</td>
         <td><span class="stock-badge ${stockClass}">${p.current_stock}</span></td>
         <td style="white-space:nowrap;">
           <button class="btn btn-sm btn-ghost stock-btn">Adjust</button>
@@ -359,7 +378,65 @@
       tr.querySelector('.stock-btn').addEventListener('click', () => openStockModal(p));
       tr.querySelector('.history-btn').addEventListener('click', () => openHistoryModal(p));
       tbody.appendChild(tr);
+
+      if (costPerItem != null) totalCost += costPerItem * p.current_stock;
+      if (p.price != null) totalSelling += p.price * p.current_stock;
     });
+
+    $('total-cost-value').textContent = peso(totalCost);
+    $('total-selling-value').textContent = peso(totalSelling);
+  }
+
+  function peso(n){ return '₱' + (Number(n) || 0).toFixed(2); }
+
+  // Cost per item is derived from each product's linked recipe (materials +
+  // equipment cost, divided by yield). Products not linked to a recipe (or
+  // with bracket pricing / no recipe) show no cost — there's no basis yet.
+  async function computeProductCosts(productIds){
+    if (!productIds.length) return {};
+
+    const { data: productLinks } = await supabase.from('products').select('id, recipe_id').in('id', productIds);
+    const recipeIds = (productLinks || []).map(p => p.recipe_id).filter(Boolean);
+    if (recipeIds.length === 0) return {};
+
+    const [{ data: recipeRows }, { data: riRows }, { data: reRows }, { data: materials }, { data: equipmentRows }] = await Promise.all([
+      supabase.from('recipes').select('id, yield_qty, batch_mode').in('id', recipeIds),
+      supabase.from('recipe_ingredients').select('*'),
+      supabase.from('recipe_equipment').select('*'),
+      supabase.rpc('fn_list_ingredients_with_stock'),
+      supabase.from('equipment').select('id, cost_per_use'),
+    ]);
+
+    const recipeCostById = {};
+    (recipeRows || []).forEach((r) => {
+      const ris = (riRows || []).filter(ri => ri.recipe_id === r.id);
+      const res = (reRows || []).filter(re => re.recipe_id === r.id);
+
+      let materialsCost = 0;
+      ris.forEach((ri) => {
+        const mat = (materials || []).find(m => m.id === ri.ingredient_id);
+        if (!mat) return;
+        const actualQty = r.batch_mode === 'percentage' ? (ri.quantity / 100) * (r.yield_qty || 0) : ri.quantity;
+        materialsCost += actualQty * (mat.cost_per_unit || 0);
+      });
+
+      let equipmentCost = 0;
+      res.forEach((re) => {
+        const eq = (equipmentRows || []).find(e => e.id === re.equipment_id);
+        if (!eq) return;
+        equipmentCost += re.uses_per_batch * (eq.cost_per_use || 0);
+      });
+
+      recipeCostById[r.id] = r.yield_qty > 0 ? (materialsCost + equipmentCost) / r.yield_qty : null;
+    });
+
+    const costByProductId = {};
+    (productLinks || []).forEach((p) => {
+      if (p.recipe_id && recipeCostById[p.recipe_id] != null) {
+        costByProductId[p.id] = recipeCostById[p.recipe_id];
+      }
+    });
+    return costByProductId;
   }
 
   // ---------------- Add product ----------------
