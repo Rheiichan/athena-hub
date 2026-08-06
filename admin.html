@@ -121,6 +121,7 @@
       <div class="tab" data-tab="all">All Businesses</div>
       <div class="tab" data-tab="resets">Password Resets</div>
       <div class="tab" data-tab="perpetual">Perpetual Codes</div>
+      <div class="tab" data-tab="history">Reset History</div>
     </div>
 
     <!-- PENDING -->
@@ -200,6 +201,20 @@
         <div class="empty" id="empty-perpetual" style="display:none;">No perpetual codes registered yet.</div>
       </div>
     </div>
+
+    <!-- RESET HISTORY -->
+    <div class="panel-view" id="view-history">
+      <div class="section-head">
+        <h2>Password reset history</h2>
+        <button class="refresh" data-refresh="history">Refresh</button>
+      </div>
+      <div class="card">
+        <table id="table-history"><thead>
+          <tr><th>Business</th><th>Email</th><th>Requested</th><th>Status</th><th>Resolved</th><th></th></tr>
+        </thead><tbody></tbody></table>
+        <div class="empty" id="empty-history" style="display:none;">No reset requests yet.</div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -271,6 +286,7 @@
       if (name === 'all') loadAll();
       if (name === 'resets') loadResets();
       if (name === 'perpetual') loadPerpetual();
+      if (name === 'history') loadHistory();
     });
   });
   document.querySelectorAll('[data-refresh]').forEach((btn) => {
@@ -280,6 +296,7 @@
       if (name === 'all') loadAll();
       if (name === 'resets') loadResets();
       if (name === 'perpetual') loadPerpetual();
+      if (name === 'history') loadHistory();
     });
   });
 
@@ -446,6 +463,45 @@
         <td>${fmtDate(c.issued_at)}</td>
         <td>${fmtDate(c.used_at)}</td>
       `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------------- Reset history ----------------
+  async function loadHistory(){
+    const tbody = document.querySelector('#table-history tbody');
+    tbody.innerHTML = '';
+    const { data, error } = await supabase.rpc('fn_admin_list_password_resets', { p_status: null });
+
+    if (error || !data || data.length === 0) {
+      $('empty-history').style.display = 'block';
+      return;
+    }
+    $('empty-history').style.display = 'none';
+
+    data.forEach((r) => {
+      const tr = document.createElement('tr');
+      const badgeClass = r.status === 'resolved' ? 'active' : r.status === 'failed_verification' ? 'suspended' : 'pending';
+      const badgeLabel = r.status === 'pending' ? 'awaiting send' : r.status.replace('_', ' ');
+      tr.innerHTML = `
+        <td>${r.business_name}</td>
+        <td>${r.email}</td>
+        <td>${fmtDate(r.requested_at)}</td>
+        <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
+        <td>${r.status === 'resolved' ? 'Yes' : '—'}</td>
+        <td><button class="btn btn-sm btn-ghost resend-btn">Resend Link</button></td>
+      `;
+      tr.querySelector('.resend-btn').addEventListener('click', async (ev) => {
+        ev.target.disabled = true; ev.target.textContent = 'Sending…';
+        const redirectTo = new URL('reset-password.html', window.location.href).href;
+        const { error: sendError } = await supabase.auth.resetPasswordForEmail(r.email, { redirectTo });
+        ev.target.disabled = false; ev.target.textContent = 'Resend Link';
+        if (sendError) {
+          alert('Could not send reset link: ' + sendError.message);
+          return;
+        }
+        alert(`Reset link sent to ${r.email}.`);
+      });
       tbody.appendChild(tr);
     });
   }

@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Athena — Business Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Overwritten at runtime based on the business's stored theme_color/theme_mode. */
+    --accent:#7C4DB8; --accent-dark:#583A82; --accent-soft:#F1ECFA;
+    --ink:#211B2B; --muted:#6E6779; --line:#E7E3EE; --card:#FFFFFF; --bg:#FAFAFC;
+    --sidebar-bg:#211B2B; --sidebar-ink:#F3EEFA; --sidebar-muted:#B9AFC9;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',system-ui,sans-serif;color:var(--ink);background:var(--bg);}
+  a{color:inherit;text-decoration:none;}
+
+  /* ---------- Auth-checking splash ---------- */
+  .splash{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--sidebar-bg);color:var(--sidebar-ink);}
+  .splash .mark{font-family:'Fraunces',serif;font-weight:500;font-size:32px;opacity:.85;}
+
+  /* ---------- App shell ---------- */
+  .shell{display:none;min-height:100vh;grid-template-columns:250px 1fr;}
+  .shell.show{display:grid;}
+  @media (max-width:900px){ .shell.show{grid-template-columns:1fr;} }
+
+  .sidebar{
+    background:var(--sidebar-bg);color:var(--sidebar-ink);
+    padding:26px 20px;display:flex;flex-direction:column;
+  }
+  @media (max-width:900px){ .sidebar{display:none;} }
+
+  .brand{margin-bottom:6px;}
+  .brand .eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--sidebar-muted);margin:0 0 4px;}
+  .brand .name{font-family:'Fraunces',serif;font-weight:600;font-size:24px;margin:0;}
+  .biz-name{font-size:13px;color:var(--sidebar-muted);margin:2px 0 26px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.12);}
+
+  nav.modules{flex:1;display:flex;flex-direction:column;gap:2px;}
+  .nav-section-label{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--sidebar-muted);margin:16px 0 6px;padding:0 10px;}
+  .nav-section-label:first-child{margin-top:0;}
+  .nav-item{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:9px 10px;border-radius:8px;font-size:14px;color:var(--sidebar-ink);cursor:pointer;
+  }
+  .nav-item:hover{background:rgba(255,255,255,.08);}
+  .nav-item.active{background:var(--accent);}
+  .nav-item .soon{font-size:10px;color:var(--sidebar-muted);border:1px solid rgba(255,255,255,.2);padding:1px 6px;border-radius:99px;}
+
+  .sidebar-foot{padding-top:16px;border-top:1px solid rgba(255,255,255,.12);}
+  .who{font-size:12.5px;color:var(--sidebar-muted);margin-bottom:10px;word-break:break-all;}
+  .signout-btn{
+    width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);
+    background:transparent;color:var(--sidebar-ink);font-size:13px;cursor:pointer;font-family:inherit;
+  }
+  .signout-btn:hover{background:rgba(255,255,255,.08);}
+
+  /* ---------- Mobile top bar ---------- */
+  .mobile-bar{display:none;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--sidebar-bg);color:var(--sidebar-ink);}
+  @media (max-width:900px){ .mobile-bar{display:flex;} }
+  .mobile-bar .name{font-family:'Fraunces',serif;font-weight:600;font-size:18px;}
+
+  /* ---------- Main content ---------- */
+  main{padding:36px 40px 60px;}
+  @media (max-width:900px){ main{padding:24px 20px 48px;} }
+
+  .greeting h1{font-family:'Fraunces',serif;font-weight:600;font-size:26px;margin:0 0 6px;}
+  .greeting p{color:var(--muted);font-size:14.5px;margin:0 0 32px;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;}
+  .module-card{
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:18px;display:flex;flex-direction:column;gap:8px;min-height:110px;
+    transition:border-color .15s, transform .15s;
+  }
+  .module-card.enabled{cursor:pointer;}
+  .module-card.enabled:hover{border-color:var(--accent);transform:translateY(-1px);}
+  .module-card.disabled{opacity:.55;}
+  .module-card .icon{width:30px;height:30px;border-radius:8px;background:var(--accent-soft);color:var(--accent-dark);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;font-size:15px;}
+  .module-card .title{font-weight:600;font-size:14.5px;}
+  .module-card .desc{font-size:12.5px;color:var(--muted);line-height:1.4;flex:1;}
+  .module-card .badge{align-self:flex-start;font-size:10px;color:var(--muted);border:1px solid var(--line);padding:2px 8px;border-radius:99px;}
+
+  .banner{
+    background:var(--accent-soft);color:var(--accent-dark);border-radius:10px;
+    padding:14px 18px;font-size:13.5px;margin-bottom:28px;display:none;
+  }
+  .banner.show{display:block;}
+</style>
+</head>
+<body>
+
+<div class="splash" id="splash">
+  <div class="mark">Athena</div>
+</div>
+
+<div class="shell" id="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <p class="eyebrow">Soaphrodite Labs</p>
+      <p class="name">Athena</p>
+    </div>
+    <p class="biz-name" id="sidebar-biz-name">—</p>
+
+    <nav class="modules" id="nav-modules">
+      <div class="nav-item active" data-view="dashboard">Dashboard</div>
+
+      <p class="nav-section-label">Sell &amp; Make</p>
+      <a class="nav-item" href="pos.html">POS <span class="soon">Soon</span></a>
+      <a class="nav-item" href="recipes.html">Recipe Calculator <span class="soon">Soon</span></a>
+
+      <p class="nav-section-label">Stock</p>
+      <a class="nav-item" href="product-inventory.html">Product Inventory <span class="soon">Soon</span></a>
+      <a class="nav-item" href="ingredient-inventory.html">Ingredient Inventory <span class="soon">Soon</span></a>
+      <a class="nav-item" href="procurement.html">Procurement <span class="soon">Soon</span></a>
+
+      <p class="nav-section-label">Operate</p>
+      <a class="nav-item" href="scheduler.html">Scheduler <span class="soon">Soon</span></a>
+      <a class="nav-item" href="orders.html">Order Release Tracker <span class="soon">Soon</span></a>
+      <a class="nav-item" href="finances.html">Finances <span class="soon">Soon</span></a>
+      <a class="nav-item" href="employees.html">Employees <span class="soon">Soon</span></a>
+
+      <p class="nav-section-label">Setup</p>
+      <a class="nav-item" href="settings.html">Business Settings <span class="soon">Soon</span></a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <p class="who" id="who-email"></p>
+      <button class="signout-btn" id="sign-out">Sign out</button>
+    </div>
+  </aside>
+
+  <div>
+    <div class="mobile-bar">
+      <span class="name">Athena</span>
+      <button class="signout-btn" id="sign-out-mobile" style="width:auto;">Sign out</button>
+    </div>
+
+    <main>
+      <div class="banner" id="setup-banner">
+        Add your business details (name, contact, logo) in Business Settings so they show up on your invoices, receipts, and payslips.
+      </div>
+
+      <div class="greeting">
+        <h1 id="greeting-text">Welcome back</h1>
+        <p>Here's everything you can run from Athena.</p>
+      </div>
+
+      <div class="grid" id="module-grid"></div>
+    </main>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  const SUPABASE_URL = 'https://nitbsqhvjhdappgsghci.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pdGJzcWh2amhkYXBwZ3NnaGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzgxNDksImV4cCI6MjEwMTUxNDE0OX0.r0wKMkslE1dOJIpy62bzDzfoEUvw73AA5A9GeMcnhnI';
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const $ = (id) => document.getElementById(id);
+
+  const THEME_PALETTES = {
+    violet: { accent: '#7C4DB8', accentDark: '#583A82', accentSoft: '#F1ECFA' },
+    orange: { accent: '#C2661F', accentDark: '#96501A', accentSoft: '#FBEEE2' },
+    red:    { accent: '#B3392B', accentDark: '#8C2A1F', accentSoft: '#FBEAE7' },
+    yellow: { accent: '#A87A10', accentDark: '#805E0C', accentSoft: '#FBF3DD' },
+    green:  { accent: '#2F7A54', accentDark: '#235C40', accentSoft: '#E7F4ED' },
+    pink:   { accent: '#C2477E', accentDark: '#983863', accentSoft: '#FBEAF2' },
+  };
+
+  function applyTheme(color, mode){
+    const palette = THEME_PALETTES[color] || THEME_PALETTES.violet;
+    const root = document.documentElement.style;
+    root.setProperty('--accent', palette.accent);
+    root.setProperty('--accent-dark', palette.accentDark);
+    root.setProperty('--accent-soft', palette.accentSoft);
+
+    if (mode === 'dark') {
+      root.setProperty('--bg', '#17151B');
+      root.setProperty('--card', '#211E27');
+      root.setProperty('--ink', '#F3EEFA');
+      root.setProperty('--muted', '#A79FB3');
+      root.setProperty('--line', '#37333F');
+      root.setProperty('--sidebar-bg', '#0F0D13');
+    }
+  }
+
+  const MODULES = [
+    { key: 'pos', title: 'POS', desc: 'Ring up sales for whatever you sell.', href: 'pos.html', initial: 'P' },
+    { key: 'recipes', title: 'Recipe Calculator', desc: 'Cost out recipes from your ingredients.', href: 'recipes.html', initial: 'R' },
+    { key: 'product-inventory', title: 'Product Inventory', desc: 'Track finished-product stock and history.', href: 'product-inventory.html', initial: 'PI' },
+    { key: 'ingredient-inventory', title: 'Ingredient Inventory', desc: 'Track raw material stock and history.', href: 'ingredient-inventory.html', initial: 'II' },
+    { key: 'procurement', title: 'Procurement', desc: 'Order and receive ingredients from suppliers.', href: 'procurement.html', initial: 'PR' },
+    { key: 'scheduler', title: 'Scheduler', desc: 'A calendar for production, maintenance, and events.', href: 'scheduler.html', initial: 'S' },
+    { key: 'orders', title: 'Order Release Tracker', desc: 'Track releases against active orders.', href: 'orders.html', initial: 'O' },
+    { key: 'finances', title: 'Finances', desc: 'Income, expenses, and the numbers behind them.', href: 'finances.html', initial: 'F' },
+    { key: 'employees', title: 'Employees', desc: 'Team records and payslips.', href: 'employees.html', initial: 'E' },
+    { key: 'settings', title: 'Business Settings', desc: 'Business details, theme, and admin tools.', href: 'settings.html', initial: 'B' },
+  ];
+
+  function renderModuleGrid(){
+    const grid = $('module-grid');
+    grid.innerHTML = '';
+    MODULES.forEach((m) => {
+      const card = document.createElement(m.href ? 'a' : 'div');
+      card.className = 'module-card disabled'; // flips to enabled once each page actually exists
+      if (m.href) card.href = m.href;
+      card.innerHTML = `
+        <div class="icon">${m.initial}</div>
+        <div class="title">${m.title}</div>
+        <div class="desc">${m.desc}</div>
+        <span class="badge">Coming soon</span>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  async function signOutAndRedirect(){
+    await supabase.auth.signOut();
+    window.location.href = 'login.html';
+  }
+
+  async function init(){
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = 'login.html';
+      return;
+    }
+
+    const { data: business, error } = await supabase
+      .from('businesses')
+      .select('business_name, email, status, theme_color, theme_mode, website, contact_number, bir_number, logo_url')
+      .eq('owner_auth_user_id', session.user.id)
+      .single();
+
+    if (error || !business) {
+      await signOutAndRedirect();
+      return;
+    }
+
+    if (business.status !== 'active') {
+      await signOutAndRedirect();
+      return;
+    }
+
+    applyTheme(business.theme_color, business.theme_mode);
+
+    $('sidebar-biz-name').textContent = business.business_name;
+    $('who-email').textContent = session.user.email;
+    $('greeting-text').textContent = `Welcome back, ${business.business_name}`;
+
+    const hasBusinessDetails = business.website || business.contact_number || business.bir_number || business.logo_url;
+    if (!hasBusinessDetails) {
+      $('setup-banner').classList.add('show');
+    }
+
+    renderModuleGrid();
+
+    $('splash').style.display = 'none';
+    $('shell').classList.add('show');
+  }
+
+  $('sign-out').addEventListener('click', signOutAndRedirect);
+  $('sign-out-mobile').addEventListener('click', signOutAndRedirect);
+
+  init();
+</script>
+</body>
+</html>
