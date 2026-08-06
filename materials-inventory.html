@@ -195,8 +195,16 @@
           <h1>Materials Inventory</h1>
           <p>Raw materials and ingredients, with current stock.</p>
         </div>
-        <button class="btn" id="toggle-add-btn">+ Add Material</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" id="template-btn">Download CSV template</button>
+          <button class="btn btn-ghost btn-sm" id="export-btn">Export CSV</button>
+          <button class="btn btn-ghost btn-sm" id="import-btn">Import CSV</button>
+          <input type="file" id="import-file" accept=".csv" style="display:none;" />
+          <button class="btn" id="toggle-add-btn">+ Add Material</button>
+        </div>
       </div>
+
+      <div id="import-msg" class="msg"></div>
 
       <div class="card add-form" id="add-form-card">
         <div class="card-pad">
@@ -210,19 +218,46 @@
               </div>
               <div class="field">
                 <label for="p-unit">Unit</label>
-                <input type="text" id="p-unit" placeholder="g, ml, pcs" />
+                <select id="p-unit">
+                  <option value="pcs">pcs</option>
+                  <option value="g">g</option>
+                  <option value="kg">kg</option>
+                  <option value="ml">ml</option>
+                  <option value="liter">liter</option>
+                </select>
               </div>
             </div>
-            <div class="field-row">
-              <div class="field">
-                <label for="p-supplier">Supplier</label>
-                <input type="text" id="p-supplier" />
+            <div class="field">
+              <label for="p-supplier">Supplier</label>
+              <input type="text" id="p-supplier" />
+            </div>
+
+            <div class="qty-buttons" style="margin-top:4px;">
+              <button type="button" class="cost-mode-btn selected" data-mode="auto">Auto-calculate cost</button>
+              <button type="button" class="cost-mode-btn" data-mode="manual">Enter manually</button>
+            </div>
+
+            <div id="cost-auto-fields">
+              <div class="field-row">
+                <div class="field">
+                  <label for="p-pack-cost">Cost per pack</label>
+                  <input type="number" id="p-pack-cost" step="0.01" min="0" placeholder="e.g. 450" />
+                </div>
+                <div class="field">
+                  <label for="p-pack-size">Pack size (in the unit above)</label>
+                  <input type="number" id="p-pack-size" step="0.0001" min="0" placeholder="e.g. 1000" />
+                </div>
               </div>
+              <p class="hint" id="computed-cost-display" style="margin:-6px 0 14px;color:var(--muted);font-size:12.5px;">Cost per unit will be calculated automatically.</p>
+            </div>
+
+            <div id="cost-manual-field" style="display:none;">
               <div class="field">
                 <label for="p-cost">Cost per unit</label>
                 <input type="number" id="p-cost" step="0.0001" min="0" />
               </div>
             </div>
+
             <button type="submit" class="btn" id="add-submit">Add material</button>
             <button type="button" class="btn btn-ghost" id="cancel-add" style="margin-left:8px;">Cancel</button>
           </form>
@@ -369,9 +404,35 @@
   $('cancel-add').addEventListener('click', () => {
     $('add-form-card').classList.remove('show');
     $('add-product-form').reset();
+    setCostMode('auto');
   });
 
   let businessId = null;
+  let costMode = 'auto';
+
+  function setCostMode(mode){
+    costMode = mode;
+    document.querySelectorAll('.cost-mode-btn').forEach((b) => b.classList.toggle('selected', b.dataset.mode === mode));
+    $('cost-auto-fields').style.display = mode === 'auto' ? 'block' : 'none';
+    $('cost-manual-field').style.display = mode === 'manual' ? 'block' : 'none';
+  }
+  document.querySelectorAll('.cost-mode-btn').forEach((btn) => {
+    btn.addEventListener('click', () => setCostMode(btn.dataset.mode));
+  });
+
+  function updateComputedCost(){
+    const packCost = parseFloat($('p-pack-cost').value);
+    const packSize = parseFloat($('p-pack-size').value);
+    const display = $('computed-cost-display');
+    if (packCost > 0 && packSize > 0) {
+      const perUnit = packCost / packSize;
+      display.textContent = `Cost per unit: ${perUnit.toFixed(4)} (${packCost} ÷ ${packSize})`;
+    } else {
+      display.textContent = 'Cost per unit will be calculated automatically.';
+    }
+  }
+  $('p-pack-cost').addEventListener('input', updateComputedCost);
+  $('p-pack-size').addEventListener('input', updateComputedCost);
 
   $('add-product-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -381,9 +442,17 @@
     btn.disabled = true; btn.textContent = 'Adding…';
 
     const name = $('p-name').value.trim();
-    const unit = $('p-unit').value.trim() || null;
+    const unit = $('p-unit').value;
     const supplier = $('p-supplier').value.trim() || null;
-    const cost_per_unit = $('p-cost').value ? parseFloat($('p-cost').value) : 0;
+
+    let cost_per_unit = 0;
+    if (costMode === 'auto') {
+      const packCost = parseFloat($('p-pack-cost').value);
+      const packSize = parseFloat($('p-pack-size').value);
+      if (packCost > 0 && packSize > 0) cost_per_unit = packCost / packSize;
+    } else {
+      cost_per_unit = $('p-cost').value ? parseFloat($('p-cost').value) : 0;
+    }
 
     const { data: newIngredient, error } = await supabase
       .from('ingredients')
@@ -403,6 +472,8 @@
     });
 
     $('add-product-form').reset();
+    setCostMode('auto');
+    updateComputedCost();
     $('add-form-card').classList.remove('show');
     loadProducts();
   });
@@ -483,6 +554,121 @@
   }
   $('history-modal-close').addEventListener('click', () => $('history-modal-overlay').classList.remove('show'));
   $('history-modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'history-modal-overlay') $('history-modal-overlay').classList.remove('show'); });
+
+  // ---------------- CSV: template / export / import ----------------
+  function csvEscape(val){
+    const s = String(val ?? '');
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
+  function downloadCsv(filename, rows){
+    const csv = rows.map((row) => row.map(csvEscape).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  $('template-btn').addEventListener('click', () => {
+    downloadCsv('materials-template.csv', [
+      ['name', 'unit', 'cost_per_unit', 'supplier'],
+      ['Coconut Oil', 'g', '0.45', 'Local Supplier'],
+    ]);
+  });
+
+  $('export-btn').addEventListener('click', () => {
+    const rows = [['name', 'unit', 'cost_per_unit', 'supplier', 'current_stock']];
+    products.forEach((p) => rows.push([p.name, p.unit || '', p.cost_per_unit ?? '', p.supplier || '', p.current_stock]));
+    downloadCsv('materials-export.csv', rows);
+  });
+
+  // Minimal CSV line parser — handles quoted fields with embedded commas.
+  function parseCsv(text){
+    const lines = text.split(/\r\n|\n/).filter((l) => l.trim().length > 0);
+    return lines.map((line) => {
+      const cells = [];
+      let cur = '', inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQuotes) {
+          if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+          else if (ch === '"') { inQuotes = false; }
+          else { cur += ch; }
+        } else {
+          if (ch === '"') inQuotes = true;
+          else if (ch === ',') { cells.push(cur); cur = ''; }
+          else cur += ch;
+        }
+      }
+      cells.push(cur);
+      return cells;
+    });
+  }
+
+  $('import-btn').addEventListener('click', () => $('import-file').click());
+
+  $('import-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const msg = $('import-msg');
+    hideMsg(msg);
+
+    const text = await file.text();
+    const rows = parseCsv(text);
+    if (rows.length < 2) {
+      showMsg(msg, 'CSV looks empty — nothing to import.', 'error');
+      e.target.value = '';
+      return;
+    }
+
+    const header = rows[0].map((h) => h.trim().toLowerCase());
+    const idx = {
+      name: header.indexOf('name'),
+      unit: header.indexOf('unit'),
+      cost: header.indexOf('cost_per_unit'),
+      supplier: header.indexOf('supplier'),
+    };
+    if (idx.name === -1) {
+      showMsg(msg, 'CSV must have a "name" column. Use the template as a reference.', 'error');
+      e.target.value = '';
+      return;
+    }
+
+    const existingByName = new Map(products.map((p) => [p.name.trim().toLowerCase(), p]));
+    let created = 0, updated = 0, failed = 0;
+
+    for (const row of rows.slice(1)) {
+      const name = (row[idx.name] || '').trim();
+      if (!name) continue;
+      const unit = idx.unit > -1 ? (row[idx.unit] || '').trim() || null : null;
+      const cost_per_unit = idx.cost > -1 && row[idx.cost] !== '' ? parseFloat(row[idx.cost]) : 0;
+      const supplier = idx.supplier > -1 ? (row[idx.supplier] || '').trim() || null : null;
+
+      const existing = existingByName.get(name.toLowerCase());
+
+      if (existing) {
+        const { error } = await supabase.from('ingredients')
+          .update({ unit, cost_per_unit, supplier })
+          .eq('id', existing.id);
+        if (error) failed++; else updated++;
+      } else {
+        const { data: newRow, error } = await supabase.from('ingredients')
+          .insert({ business_id: businessId, name, unit, cost_per_unit, supplier })
+          .select().single();
+        if (error || !newRow) { failed++; continue; }
+        await supabase.from('ingredient_inventory').insert({
+          business_id: businessId, ingredient_id: newRow.id, current_stock: 0,
+        });
+        created++;
+      }
+    }
+
+    e.target.value = '';
+    showMsg(msg, `Import complete — ${created} added, ${updated} updated${failed ? `, ${failed} failed` : ''}.`, failed ? 'error' : 'success');
+    loadProducts();
+  });
 
   // ---------------- Init ----------------
   async function init(){
