@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --accent:#7C4DB8; --accent-dark:#583A82; --accent-soft:#F1ECFA;
+    --accent:#7C4DB8; --accent-dark:#583A82; --accent-soft:#F1ECFA; --accent-ink:#3B2260;
     --ink:#211B2B; --muted:#6E6779; --line:#E7E3EE; --card:#FFFFFF; --bg:#FAFAFC;
     --sidebar-bg:#211B2B; --sidebar-ink:#F3EEFA; --sidebar-muted:#B9AFC9;
     --success:#2F7A54; --success-bg:#EAF6EF; --error:#B3392B; --error-bg:#FBEAE7;
@@ -31,13 +31,15 @@
   .brand .eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--sidebar-muted);margin:0 0 4px;}
   .brand .name{font-family:'Fraunces',serif;font-weight:600;font-size:24px;margin:0;}
   .biz-name{font-size:13px;color:var(--sidebar-muted);margin:2px 0 26px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.12);}
+  .sidebar-logo{width:36px;height:36px;border-radius:8px;object-fit:cover;margin-bottom:8px;display:none;}
+  .sidebar-logo.show{display:block;}
 
   nav.modules{flex:1;display:flex;flex-direction:column;gap:2px;}
   .nav-section-label{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--sidebar-muted);margin:16px 0 6px;padding:0 10px;}
   .nav-section-label:first-child{margin-top:0;}
   .nav-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:8px;font-size:14px;color:var(--sidebar-ink);cursor:pointer;}
   .nav-item:hover{background:rgba(255,255,255,.08);}
-  .nav-item.active{background:var(--accent);}
+  .nav-item.active{background:rgba(255,255,255,.18);}
   .nav-item .soon{font-size:10px;color:var(--sidebar-muted);border:1px solid rgba(255,255,255,.2);padding:1px 6px;border-radius:99px;}
 
   .sidebar-foot{padding-top:16px;border-top:1px solid rgba(255,255,255,.12);}
@@ -64,7 +66,7 @@
   .field{margin-bottom:16px;}
   .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   @media (max-width:560px){ .field-row{grid-template-columns:1fr;} }
-  input[type=text],input[type=email],input[type=tel],input[type=url]{
+  input[type=text],input[type=email],input[type=tel],input[type=url],input[type=password]{
     width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:8px;
     font-size:14.5px;font-family:inherit;color:var(--ink);background:var(--bg);
   }
@@ -88,7 +90,7 @@
   }
   .mode-btn.selected{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-dark);}
 
-  .btn{padding:12px 22px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:14.5px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .btn{padding:12px 22px;border:none;border-radius:8px;background:var(--accent);color:var(--accent-ink);font-size:14.5px;font-weight:600;cursor:pointer;font-family:inherit;}
   .btn:hover{background:var(--accent-dark);}
   .btn:disabled{opacity:.55;cursor:not-allowed;}
 
@@ -106,6 +108,7 @@
 
 <div class="shell" id="shell">
   <aside class="sidebar">
+    <img class="sidebar-logo" id="sidebar-logo" alt="" />
     <div class="brand">
       <p class="eyebrow">Soaphrodite Labs</p>
       <p class="name">Athena</p>
@@ -210,6 +213,34 @@
 
         <button type="submit" class="btn" id="save-btn">Save changes</button>
       </form>
+
+      <div class="section">
+        <h2>Password</h2>
+        <p class="sub">Change the password you use to log in.</p>
+        <div id="password-msg" class="msg"></div>
+        <form id="password-form">
+          <div class="field-row">
+            <div class="field">
+              <label for="new-password">New password</label>
+              <input type="password" id="new-password" autocomplete="new-password" minlength="8" />
+            </div>
+            <div class="field">
+              <label for="confirm-new-password">Confirm new password</label>
+              <input type="password" id="confirm-new-password" autocomplete="new-password" minlength="8" />
+            </div>
+          </div>
+          <button type="submit" class="btn" id="password-btn">Update password</button>
+        </form>
+      </div>
+
+      <div class="section" style="border-color:var(--error-bg);">
+        <h2 style="color:var(--error);">Danger zone</h2>
+        <p class="sub">Requesting deletion doesn't remove your account immediately — Soaphrodite Labs staff review it first.</p>
+        <div id="delete-msg" class="msg"></div>
+        <button type="button" class="btn" id="request-delete-btn" style="background:var(--error);color:#fff;">Request account deletion</button>
+      </div>
+
+      <p style="color:var(--muted);font-size:12px;margin:8px 0 0;">Athena Business Hub — v1.0.0</p>
     </main>
   </div>
 </div>
@@ -224,12 +255,12 @@
   const $ = (id) => document.getElementById(id);
 
   const THEME_PALETTES = {
-    violet: { accent: '#7C4DB8', accentDark: '#583A82', accentSoft: '#F1ECFA' },
-    orange: { accent: '#C2661F', accentDark: '#96501A', accentSoft: '#FBEEE2' },
-    red:    { accent: '#B3392B', accentDark: '#8C2A1F', accentSoft: '#FBEAE7' },
-    yellow: { accent: '#A87A10', accentDark: '#805E0C', accentSoft: '#FBF3DD' },
-    green:  { accent: '#2F7A54', accentDark: '#235C40', accentSoft: '#E7F4ED' },
-    pink:   { accent: '#C2477E', accentDark: '#983863', accentSoft: '#FBEAF2' },
+    violet: { panel: '#5B3789', accent: '#B79AE0', accentDark: '#9E7BC9', accentSoft: '#F1ECFA', accentInk: '#3B2260' },
+    orange: { panel: '#8C4419', accent: '#F0B27A', accentDark: '#D89355', accentSoft: '#FBEEE2', accentInk: '#5C2C0E' },
+    red:    { panel: '#7A2A20', accent: '#F0A69C', accentDark: '#D98579', accentSoft: '#FBEAE7', accentInk: '#5C1F17' },
+    yellow: { panel: '#7A5A0C', accent: '#F0D27A', accentDark: '#D9B655', accentSoft: '#FBF3DD', accentInk: '#4A3706' },
+    green:  { panel: '#1F5A3B', accent: '#A8D9BE', accentDark: '#7FBE9C', accentSoft: '#E7F4ED', accentInk: '#0F3320' },
+    pink:   { panel: '#8C2F5C', accent: '#F0AECD', accentDark: '#D98CAF', accentSoft: '#FBEAF2', accentInk: '#5C1D3B' },
   };
 
   function applyTheme(color, mode){
@@ -238,6 +269,8 @@
     root.setProperty('--accent', palette.accent);
     root.setProperty('--accent-dark', palette.accentDark);
     root.setProperty('--accent-soft', palette.accentSoft);
+    root.setProperty('--accent-ink', palette.accentInk);
+    root.setProperty('--sidebar-bg', palette.panel);
 
     if (mode === 'dark') {
       root.setProperty('--bg', '#17151B');
@@ -245,14 +278,12 @@
       root.setProperty('--ink', '#F3EEFA');
       root.setProperty('--muted', '#A79FB3');
       root.setProperty('--line', '#37333F');
-      root.setProperty('--sidebar-bg', '#0F0D13');
     } else {
       root.setProperty('--bg', '#FAFAFC');
       root.setProperty('--card', '#FFFFFF');
       root.setProperty('--ink', '#211B2B');
       root.setProperty('--muted', '#6E6779');
       root.setProperty('--line', '#E7E3EE');
-      root.setProperty('--sidebar-bg', '#211B2B');
     }
   }
 
@@ -268,7 +299,7 @@
     Object.entries(THEME_PALETTES).forEach(([key, palette]) => {
       const el = document.createElement('div');
       el.className = 'swatch' + (key === selectedColor ? ' selected' : '');
-      el.style.background = palette.accent;
+      el.style.background = palette.panel;
       el.dataset.color = key;
       el.title = key.charAt(0).toUpperCase() + key.slice(1);
       el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
@@ -294,6 +325,17 @@
       renderModeToggle();
     });
   });
+
+  function updateSidebarLogo(url){
+    const img = $('sidebar-logo');
+    if (url) {
+      img.src = url;
+      img.classList.add('show');
+    } else {
+      img.classList.remove('show');
+      img.removeAttribute('src');
+    }
+  }
 
   async function signOutAndRedirect(){
     await supabase.auth.signOut();
@@ -326,6 +368,7 @@
 
     $('sidebar-biz-name').textContent = business.business_name;
     $('who-email').textContent = session.user.email;
+    updateSidebarLogo(business.logo_url);
 
     $('business-name').value = business.business_name || '';
     $('biz-email').value = business.email || '';
@@ -367,7 +410,65 @@
     }
 
     $('sidebar-biz-name').textContent = $('business-name').value.trim();
+    updateSidebarLogo($('logo-url').value.trim());
     showMsg(msg, 'Saved.', 'success');
+  });
+
+  // ---------------- Password ----------------
+  $('password-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('password-msg');
+    hideMsg(msg);
+
+    const pw = $('new-password').value;
+    const confirm = $('confirm-new-password').value;
+
+    if (!pw || pw.length < 8) {
+      showMsg(msg, 'Password must be at least 8 characters.', 'error');
+      return;
+    }
+    if (pw !== confirm) {
+      showMsg(msg, 'Passwords do not match.', 'error');
+      return;
+    }
+
+    const btn = $('password-btn');
+    btn.disabled = true; btn.textContent = 'Updating…';
+
+    const { error } = await supabase.auth.updateUser({ password: pw });
+
+    btn.disabled = false; btn.textContent = 'Update password';
+
+    if (error) {
+      showMsg(msg, error.message || 'Could not update password.', 'error');
+      return;
+    }
+
+    $('password-form').reset();
+    showMsg(msg, 'Password updated.', 'success');
+  });
+
+  // ---------------- Danger zone ----------------
+  $('request-delete-btn').addEventListener('click', async () => {
+    const msg = $('delete-msg');
+    hideMsg(msg);
+
+    const ok = confirm('Request that Soaphrodite Labs delete your Athena Hub account? Staff will review and follow up with you.');
+    if (!ok) return;
+
+    const btn = $('request-delete-btn');
+    btn.disabled = true; btn.textContent = 'Sending…';
+
+    const { error } = await supabase.rpc('fn_request_account_deletion');
+
+    btn.disabled = false; btn.textContent = 'Request account deletion';
+
+    if (error) {
+      showMsg(msg, 'Could not send request: ' + error.message, 'error');
+      return;
+    }
+
+    showMsg(msg, 'Your deletion request has been sent to Soaphrodite Labs. Staff will follow up with you.', 'success');
   });
 
   $('sign-out').addEventListener('click', signOutAndRedirect);
