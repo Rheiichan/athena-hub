@@ -312,6 +312,66 @@
   </div>
 </div>
 
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="edit-modal-close">&times;</button>
+    <h3>Edit material</h3>
+    <p class="sub">Update this material's details.</p>
+    <div id="edit-msg" class="msg"></div>
+    <form id="edit-form">
+      <div class="field">
+        <label for="e-name">Material name</label>
+        <input type="text" id="e-name" required />
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="e-unit">Unit</label>
+          <select id="e-unit">
+            <option value="pcs">pcs</option>
+            <option value="g">g</option>
+            <option value="kg">kg</option>
+            <option value="ml">ml</option>
+            <option value="liter">liter</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="e-supplier">Supplier</label>
+          <input type="text" id="e-supplier" />
+        </div>
+      </div>
+
+      <div class="qty-buttons" style="margin-top:4px;">
+        <button type="button" class="edit-cost-mode-btn selected" data-mode="auto">Auto-calculate cost</button>
+        <button type="button" class="edit-cost-mode-btn" data-mode="manual">Enter manually</button>
+      </div>
+
+      <div id="edit-cost-auto-fields">
+        <div class="field-row">
+          <div class="field">
+            <label for="e-pack-cost">Cost per pack</label>
+            <input type="number" id="e-pack-cost" step="0.01" min="0" />
+          </div>
+          <div class="field">
+            <label for="e-pack-size">Pack size (in the unit above)</label>
+            <input type="number" id="e-pack-size" step="0.0001" min="0" />
+          </div>
+        </div>
+        <p class="hint" id="edit-computed-cost-display" style="margin:-6px 0 14px;color:var(--muted);font-size:12.5px;">Cost per unit will be calculated automatically.</p>
+      </div>
+
+      <div id="edit-cost-manual-field" style="display:none;">
+        <div class="field">
+          <label for="e-cost">Cost per unit</label>
+          <input type="number" id="e-cost" step="0.0001" min="0" />
+        </div>
+      </div>
+
+      <button type="submit" class="btn" id="edit-submit" style="width:100%;">Save changes</button>
+    </form>
+  </div>
+</div>
+
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
@@ -389,10 +449,14 @@
         <td style="white-space:nowrap;">
           <button class="btn btn-sm btn-ghost stock-btn">Adjust</button>
           <button class="btn btn-sm btn-ghost history-btn">History</button>
+          <button class="btn btn-sm btn-ghost edit-btn">Edit</button>
+          <button class="btn btn-sm btn-ghost delete-btn" style="color:var(--error);">Delete</button>
         </td>
       `;
       tr.querySelector('.stock-btn').addEventListener('click', () => openStockModal(p));
       tr.querySelector('.history-btn').addEventListener('click', () => openHistoryModal(p));
+      tr.querySelector('.edit-btn').addEventListener('click', () => openEditModal(p));
+      tr.querySelector('.delete-btn').addEventListener('click', () => deleteMaterial(p));
       tbody.appendChild(tr);
     });
   }
@@ -555,6 +619,103 @@
   $('history-modal-close').addEventListener('click', () => $('history-modal-overlay').classList.remove('show'));
   $('history-modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'history-modal-overlay') $('history-modal-overlay').classList.remove('show'); });
 
+  // ---------------- Edit material ----------------
+  let editTarget = null;
+  let editCostMode = 'auto';
+
+  function setEditCostMode(mode){
+    editCostMode = mode;
+    document.querySelectorAll('.edit-cost-mode-btn').forEach((b) => b.classList.toggle('selected', b.dataset.mode === mode));
+    $('edit-cost-auto-fields').style.display = mode === 'auto' ? 'block' : 'none';
+    $('edit-cost-manual-field').style.display = mode === 'manual' ? 'block' : 'none';
+  }
+  document.querySelectorAll('.edit-cost-mode-btn').forEach((btn) => {
+    btn.addEventListener('click', () => setEditCostMode(btn.dataset.mode));
+  });
+
+  function updateEditComputedCost(){
+    const packCost = parseFloat($('e-pack-cost').value);
+    const packSize = parseFloat($('e-pack-size').value);
+    const display = $('edit-computed-cost-display');
+    if (packCost > 0 && packSize > 0) {
+      display.textContent = `Cost per unit: ${(packCost / packSize).toFixed(4)} (${packCost} ÷ ${packSize})`;
+    } else {
+      display.textContent = 'Cost per unit will be calculated automatically.';
+    }
+  }
+  $('e-pack-cost').addEventListener('input', updateEditComputedCost);
+  $('e-pack-size').addEventListener('input', updateEditComputedCost);
+
+  function openEditModal(p){
+    editTarget = p;
+    hideMsg($('edit-msg'));
+    $('e-name').value = p.name;
+    $('e-unit').value = p.unit || 'pcs';
+    $('e-supplier').value = p.supplier || '';
+    $('e-cost').value = p.cost_per_unit || '';
+    $('e-pack-cost').value = '';
+    $('e-pack-size').value = '';
+    setEditCostMode('manual'); // editing starts from the known current cost per unit
+    updateEditComputedCost();
+    $('edit-modal-overlay').classList.add('show');
+  }
+  $('edit-modal-close').addEventListener('click', () => $('edit-modal-overlay').classList.remove('show'));
+  $('edit-modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'edit-modal-overlay') $('edit-modal-overlay').classList.remove('show'); });
+
+  $('edit-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('edit-msg');
+    hideMsg(msg);
+    const btn = $('edit-submit');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    const name = $('e-name').value.trim();
+    const unit = $('e-unit').value;
+    const supplier = $('e-supplier').value.trim() || null;
+
+    let cost_per_unit = editTarget.cost_per_unit || 0;
+    if (editCostMode === 'auto') {
+      const packCost = parseFloat($('e-pack-cost').value);
+      const packSize = parseFloat($('e-pack-size').value);
+      if (packCost > 0 && packSize > 0) cost_per_unit = packCost / packSize;
+    } else {
+      cost_per_unit = $('e-cost').value ? parseFloat($('e-cost').value) : 0;
+    }
+
+    const { error } = await supabase
+      .from('ingredients')
+      .update({ name, unit, supplier, cost_per_unit })
+      .eq('id', editTarget.id);
+
+    btn.disabled = false; btn.textContent = 'Save changes';
+
+    if (error) {
+      showMsg(msg, 'Could not save changes: ' + error.message, 'error');
+      return;
+    }
+
+    $('edit-modal-overlay').classList.remove('show');
+    loadProducts();
+  });
+
+  // ---------------- Delete material ----------------
+  async function deleteMaterial(p){
+    const ok = confirm(`Delete "${p.name}"? This removes it and its stock history. This cannot be undone.`);
+    if (!ok) return;
+
+    const { error } = await supabase.from('ingredients').delete().eq('id', p.id);
+
+    if (error) {
+      if (error.message && error.message.toLowerCase().includes('foreign key')) {
+        alert(`Can't delete "${p.name}" — it's used in one or more recipes. Remove it from those recipes first.`);
+      } else {
+        alert('Could not delete: ' + error.message);
+      }
+      return;
+    }
+    loadProducts();
+  }
+
   // ---------------- CSV: template / export / import ----------------
   function csvEscape(val){
     const s = String(val ?? '');
@@ -573,8 +734,9 @@
 
   $('template-btn').addEventListener('click', () => {
     downloadCsv('materials-template.csv', [
-      ['name', 'unit', 'cost_per_unit', 'supplier'],
-      ['Coconut Oil', 'g', '0.45', 'Local Supplier'],
+      ['name', 'unit', 'pack_cost', 'pack_size', 'cost_per_unit', 'supplier'],
+      ['Coconut Oil', 'g', '450', '1000', '', 'Local Supplier'],
+      ['Lye (NaOH)', 'g', '', '', '0.12', 'Chem Co'],
     ]);
   });
 
@@ -628,6 +790,8 @@
       name: header.indexOf('name'),
       unit: header.indexOf('unit'),
       cost: header.indexOf('cost_per_unit'),
+      packCost: header.indexOf('pack_cost'),
+      packSize: header.indexOf('pack_size'),
       supplier: header.indexOf('supplier'),
     };
     if (idx.name === -1) {
@@ -643,7 +807,10 @@
       const name = (row[idx.name] || '').trim();
       if (!name) continue;
       const unit = idx.unit > -1 ? (row[idx.unit] || '').trim() || null : null;
-      const cost_per_unit = idx.cost > -1 && row[idx.cost] !== '' ? parseFloat(row[idx.cost]) : 0;
+      const packCost = idx.packCost > -1 ? parseFloat(row[idx.packCost]) : NaN;
+      const packSize = idx.packSize > -1 ? parseFloat(row[idx.packSize]) : NaN;
+      let cost_per_unit = idx.cost > -1 && row[idx.cost] !== '' ? parseFloat(row[idx.cost]) : 0;
+      if (packCost > 0 && packSize > 0) cost_per_unit = packCost / packSize;
       const supplier = idx.supplier > -1 ? (row[idx.supplier] || '').trim() || null : null;
 
       const existing = existingByName.get(name.toLowerCase());
