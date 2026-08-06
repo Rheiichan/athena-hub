@@ -122,7 +122,7 @@
       <a class="nav-item" href="employees.html">Employees <span class="soon">Soon</span></a>
 
       <p class="nav-section-label">Setup</p>
-      <a class="nav-item" href="settings.html">Business Settings <span class="soon">Soon</span></a>
+      <a class="nav-item" href="settings.html">Business Settings</a>
     </nav>
 
     <div class="sidebar-foot">
@@ -139,7 +139,7 @@
 
     <main>
       <div class="banner" id="setup-banner">
-        Add your business details (name, contact, logo) in Business Settings so they show up on your invoices, receipts, and payslips.
+        Add your business details (name, contact, logo) in <a href="settings.html" style="text-decoration:underline;font-weight:600;">Business Settings</a> so they show up on your invoices, receipts, and payslips.
       </div>
 
       <div class="greeting">
@@ -204,14 +204,15 @@
     const grid = $('module-grid');
     grid.innerHTML = '';
     MODULES.forEach((m) => {
+      const isReady = m.key === 'settings';
       const card = document.createElement(m.href ? 'a' : 'div');
-      card.className = 'module-card disabled'; // flips to enabled once each page actually exists
+      card.className = 'module-card ' + (isReady ? 'enabled' : 'disabled');
       if (m.href) card.href = m.href;
       card.innerHTML = `
         <div class="icon">${m.initial}</div>
         <div class="title">${m.title}</div>
         <div class="desc">${m.desc}</div>
-        <span class="badge">Coming soon</span>
+        <span class="badge">${isReady ? 'Available' : 'Coming soon'}</span>
       `;
       grid.appendChild(card);
     });

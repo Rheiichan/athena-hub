@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Athena — Business Settings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --accent:#7C4DB8; --accent-dark:#583A82; --accent-soft:#F1ECFA;
+    --ink:#211B2B; --muted:#6E6779; --line:#E7E3EE; --card:#FFFFFF; --bg:#FAFAFC;
+    --sidebar-bg:#211B2B; --sidebar-ink:#F3EEFA; --sidebar-muted:#B9AFC9;
+    --success:#2F7A54; --success-bg:#EAF6EF; --error:#B3392B; --error-bg:#FBEAE7;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',system-ui,sans-serif;color:var(--ink);background:var(--bg);}
+  a{color:inherit;text-decoration:none;}
+
+  .splash{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--sidebar-bg);color:var(--sidebar-ink);}
+  .splash .mark{font-family:'Fraunces',serif;font-weight:500;font-size:32px;opacity:.85;}
+
+  .shell{display:none;min-height:100vh;grid-template-columns:250px 1fr;}
+  .shell.show{display:grid;}
+  @media (max-width:900px){ .shell.show{grid-template-columns:1fr;} }
+
+  .sidebar{background:var(--sidebar-bg);color:var(--sidebar-ink);padding:26px 20px;display:flex;flex-direction:column;}
+  @media (max-width:900px){ .sidebar{display:none;} }
+
+  .brand{margin-bottom:6px;}
+  .brand .eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--sidebar-muted);margin:0 0 4px;}
+  .brand .name{font-family:'Fraunces',serif;font-weight:600;font-size:24px;margin:0;}
+  .biz-name{font-size:13px;color:var(--sidebar-muted);margin:2px 0 26px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.12);}
+
+  nav.modules{flex:1;display:flex;flex-direction:column;gap:2px;}
+  .nav-section-label{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--sidebar-muted);margin:16px 0 6px;padding:0 10px;}
+  .nav-section-label:first-child{margin-top:0;}
+  .nav-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:8px;font-size:14px;color:var(--sidebar-ink);cursor:pointer;}
+  .nav-item:hover{background:rgba(255,255,255,.08);}
+  .nav-item.active{background:var(--accent);}
+  .nav-item .soon{font-size:10px;color:var(--sidebar-muted);border:1px solid rgba(255,255,255,.2);padding:1px 6px;border-radius:99px;}
+
+  .sidebar-foot{padding-top:16px;border-top:1px solid rgba(255,255,255,.12);}
+  .who{font-size:12.5px;color:var(--sidebar-muted);margin-bottom:10px;word-break:break-all;}
+  .signout-btn{width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--sidebar-ink);font-size:13px;cursor:pointer;font-family:inherit;}
+  .signout-btn:hover{background:rgba(255,255,255,.08);}
+
+  .mobile-bar{display:none;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--sidebar-bg);color:var(--sidebar-ink);}
+  @media (max-width:900px){ .mobile-bar{display:flex;} }
+  .mobile-bar .name{font-family:'Fraunces',serif;font-weight:600;font-size:18px;}
+
+  main{padding:36px 40px 60px;max-width:720px;}
+  @media (max-width:900px){ main{padding:24px 20px 48px;} }
+
+  .page-head h1{font-family:'Fraunces',serif;font-weight:600;font-size:26px;margin:0 0 6px;}
+  .page-head p{color:var(--muted);font-size:14.5px;margin:0 0 32px;}
+
+  .section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;margin-bottom:20px;}
+  .section h2{font-family:'Fraunces',serif;font-weight:600;font-size:17px;margin:0 0 4px;}
+  .section .sub{color:var(--muted);font-size:13px;margin:0 0 20px;}
+
+  label{display:block;font-size:13px;font-weight:600;margin:0 0 6px;}
+  .hint{font-size:12px;color:var(--muted);font-weight:400;margin-top:4px;}
+  .field{margin-bottom:16px;}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media (max-width:560px){ .field-row{grid-template-columns:1fr;} }
+  input[type=text],input[type=email],input[type=tel],input[type=url]{
+    width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:8px;
+    font-size:14.5px;font-family:inherit;color:var(--ink);background:var(--bg);
+  }
+  input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,77,184,.15);}
+
+  .swatches{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
+  .swatch{
+    width:38px;height:38px;border-radius:50%;cursor:pointer;border:3px solid transparent;
+    display:flex;align-items:center;justify-content:center;transition:border-color .15s, transform .15s;
+  }
+  .swatch:hover{transform:scale(1.08);}
+  .swatch.selected{border-color:var(--ink);}
+  .swatch svg{width:16px;height:16px;opacity:0;}
+  .swatch.selected svg{opacity:1;}
+
+  .mode-toggle{display:flex;gap:10px;}
+  .mode-btn{
+    flex:1;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);
+    cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--ink);
+    display:flex;align-items:center;justify-content:center;gap:8px;
+  }
+  .mode-btn.selected{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-dark);}
+
+  .btn{padding:12px 22px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:14.5px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .btn:hover{background:var(--accent-dark);}
+  .btn:disabled{opacity:.55;cursor:not-allowed;}
+
+  .msg{border-radius:8px;padding:12px 14px;font-size:13.5px;line-height:1.5;margin:0 0 18px;display:none;}
+  .msg.show{display:block;}
+  .msg.error{background:var(--error-bg);color:var(--error);}
+  .msg.success{background:var(--success-bg);color:var(--success);}
+</style>
+</head>
+<body>
+
+<div class="splash" id="splash">
+  <div class="mark">Athena</div>
+</div>
+
+<div class="shell" id="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <p class="eyebrow">Soaphrodite Labs</p>
+      <p class="name">Athena</p>
+    </div>
+    <p class="biz-name" id="sidebar-biz-name">—</p>
+
+    <nav class="modules">
+      <a class="nav-item" href="hub.html">Dashboard</a>
+
+      <p class="nav-section-label">Sell &amp; Make</p>
+      <a class="nav-item" href="pos.html">POS <span class="soon">Soon</span></a>
+      <a class="nav-item" href="recipes.html">Recipe Calculator <span class="soon">Soon</span></a>
+
+      <p class="nav-section-label">Stock</p>
+      <a class="nav-item" href="product-inventory.html">Product Inventory <span class="soon">Soon</span></a>
+      <a class="nav-item" href="ingredient-inventory.html">Ingredient Inventory <span class="soon">Soon</span></a>
+      <a class="nav-item" href="procurement.html">Procurement <span class="soon">Soon</span></a>
+
+      <p class="nav-section-label">Operate</p>
+      <a class="nav-item" href="scheduler.html">Scheduler <span class="soon">Soon</span></a>
+      <a class="nav-item" href="orders.html">Order Release Tracker <span class="soon">Soon</span></a>
+      <a class="nav-item" href="finances.html">Finances <span class="soon">Soon</span></a>
+      <a class="nav-item" href="employees.html">Employees <span class="soon">Soon</span></a>
+
+      <p class="nav-section-label">Setup</p>
+      <div class="nav-item active">Business Settings</div>
+    </nav>
+
+    <div class="sidebar-foot">
+      <p class="who" id="who-email"></p>
+      <button class="signout-btn" id="sign-out">Sign out</button>
+    </div>
+  </aside>
+
+  <div>
+    <div class="mobile-bar">
+      <span class="name">Athena</span>
+      <button class="signout-btn" id="sign-out-mobile" style="width:auto;">Sign out</button>
+    </div>
+
+    <main>
+      <div class="page-head">
+        <h1>Business Settings</h1>
+        <p>These details show up on your invoices, receipts, procurement documents, and payslips.</p>
+      </div>
+
+      <div id="save-msg" class="msg"></div>
+
+      <form id="settings-form">
+        <div class="section">
+          <h2>Business details</h2>
+          <p class="sub">All fields here are optional.</p>
+
+          <div class="field">
+            <label for="business-name">Business name</label>
+            <input type="text" id="business-name" />
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="biz-email">Business email</label>
+              <input type="email" id="biz-email" />
+              <p class="hint">Shown on documents — can differ from your login email.</p>
+            </div>
+            <div class="field">
+              <label for="contact-number">Contact number</label>
+              <input type="tel" id="contact-number" />
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="website">Website</label>
+              <input type="url" id="website" placeholder="https://" />
+            </div>
+            <div class="field">
+              <label for="bir-number">BIR number</label>
+              <input type="text" id="bir-number" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="logo-url">Logo URL</label>
+            <input type="url" id="logo-url" placeholder="https://" />
+            <p class="hint">Link to an image hosted elsewhere. File upload is coming later.</p>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Theme</h2>
+          <p class="sub">Changes how Athena looks for your account.</p>
+
+          <label>Accent color</label>
+          <div class="swatches" id="swatches"></div>
+
+          <label>Appearance</label>
+          <div class="mode-toggle" id="mode-toggle">
+            <button type="button" class="mode-btn" data-mode="light">Light</button>
+            <button type="button" class="mode-btn" data-mode="dark">Dark</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn" id="save-btn">Save changes</button>
+      </form>
+    </main>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  const SUPABASE_URL = 'https://nitbsqhvjhdappgsghci.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pdGJzcWh2amhkYXBwZ3NnaGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzgxNDksImV4cCI6MjEwMTUxNDE0OX0.r0wKMkslE1dOJIpy62bzDzfoEUvw73AA5A9GeMcnhnI';
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const $ = (id) => document.getElementById(id);
+
+  const THEME_PALETTES = {
+    violet: { accent: '#7C4DB8', accentDark: '#583A82', accentSoft: '#F1ECFA' },
+    orange: { accent: '#C2661F', accentDark: '#96501A', accentSoft: '#FBEEE2' },
+    red:    { accent: '#B3392B', accentDark: '#8C2A1F', accentSoft: '#FBEAE7' },
+    yellow: { accent: '#A87A10', accentDark: '#805E0C', accentSoft: '#FBF3DD' },
+    green:  { accent: '#2F7A54', accentDark: '#235C40', accentSoft: '#E7F4ED' },
+    pink:   { accent: '#C2477E', accentDark: '#983863', accentSoft: '#FBEAF2' },
+  };
+
+  function applyTheme(color, mode){
+    const palette = THEME_PALETTES[color] || THEME_PALETTES.violet;
+    const root = document.documentElement.style;
+    root.setProperty('--accent', palette.accent);
+    root.setProperty('--accent-dark', palette.accentDark);
+    root.setProperty('--accent-soft', palette.accentSoft);
+
+    if (mode === 'dark') {
+      root.setProperty('--bg', '#17151B');
+      root.setProperty('--card', '#211E27');
+      root.setProperty('--ink', '#F3EEFA');
+      root.setProperty('--muted', '#A79FB3');
+      root.setProperty('--line', '#37333F');
+      root.setProperty('--sidebar-bg', '#0F0D13');
+    } else {
+      root.setProperty('--bg', '#FAFAFC');
+      root.setProperty('--card', '#FFFFFF');
+      root.setProperty('--ink', '#211B2B');
+      root.setProperty('--muted', '#6E6779');
+      root.setProperty('--line', '#E7E3EE');
+      root.setProperty('--sidebar-bg', '#211B2B');
+    }
+  }
+
+  function showMsg(el, text, type){ el.textContent = text; el.className = 'msg show ' + type; }
+  function hideMsg(el){ el.className = 'msg'; }
+
+  let selectedColor = 'violet';
+  let selectedMode = 'light';
+
+  function renderSwatches(){
+    const wrap = $('swatches');
+    wrap.innerHTML = '';
+    Object.entries(THEME_PALETTES).forEach(([key, palette]) => {
+      const el = document.createElement('div');
+      el.className = 'swatch' + (key === selectedColor ? ' selected' : '');
+      el.style.background = palette.accent;
+      el.dataset.color = key;
+      el.title = key.charAt(0).toUpperCase() + key.slice(1);
+      el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+      el.addEventListener('click', () => {
+        selectedColor = key;
+        applyTheme(selectedColor, selectedMode);
+        renderSwatches();
+      });
+      wrap.appendChild(el);
+    });
+  }
+
+  function renderModeToggle(){
+    document.querySelectorAll('.mode-btn').forEach((btn) => {
+      btn.classList.toggle('selected', btn.dataset.mode === selectedMode);
+    });
+  }
+
+  document.querySelectorAll('.mode-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      selectedMode = btn.dataset.mode;
+      applyTheme(selectedColor, selectedMode);
+      renderModeToggle();
+    });
+  });
+
+  async function signOutAndRedirect(){
+    await supabase.auth.signOut();
+    window.location.href = 'login.html';
+  }
+
+  let sessionUserId = null;
+
+  async function init(){
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { window.location.href = 'login.html'; return; }
+    sessionUserId = session.user.id;
+
+    const { data: business, error } = await supabase
+      .from('businesses')
+      .select('business_name, email, status, theme_color, theme_mode, website, contact_number, bir_number, logo_url')
+      .eq('owner_auth_user_id', session.user.id)
+      .single();
+
+    if (error || !business || business.status !== 'active') {
+      await signOutAndRedirect();
+      return;
+    }
+
+    selectedColor = business.theme_color || 'violet';
+    selectedMode = business.theme_mode || 'light';
+    applyTheme(selectedColor, selectedMode);
+    renderSwatches();
+    renderModeToggle();
+
+    $('sidebar-biz-name').textContent = business.business_name;
+    $('who-email').textContent = session.user.email;
+
+    $('business-name').value = business.business_name || '';
+    $('biz-email').value = business.email || '';
+    $('contact-number').value = business.contact_number || '';
+    $('website').value = business.website || '';
+    $('bir-number').value = business.bir_number || '';
+    $('logo-url').value = business.logo_url || '';
+
+    $('splash').style.display = 'none';
+    $('shell').classList.add('show');
+  }
+
+  $('settings-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('save-msg');
+    hideMsg(msg);
+    const btn = $('save-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    const { error } = await supabase
+      .from('businesses')
+      .update({
+        business_name: $('business-name').value.trim(),
+        email: $('biz-email').value.trim() || null,
+        contact_number: $('contact-number').value.trim() || null,
+        website: $('website').value.trim() || null,
+        bir_number: $('bir-number').value.trim() || null,
+        logo_url: $('logo-url').value.trim() || null,
+        theme_color: selectedColor,
+        theme_mode: selectedMode,
+      })
+      .eq('owner_auth_user_id', sessionUserId);
+
+    btn.disabled = false; btn.textContent = 'Save changes';
+
+    if (error) {
+      showMsg(msg, 'Could not save changes: ' + error.message, 'error');
+      return;
+    }
+
+    $('sidebar-biz-name').textContent = $('business-name').value.trim();
+    showMsg(msg, 'Saved.', 'success');
+  });
+
+  $('sign-out').addEventListener('click', signOutAndRedirect);
+  $('sign-out-mobile').addEventListener('click', signOutAndRedirect);
+
+  init();
+</script>
+</body>
+</html>
