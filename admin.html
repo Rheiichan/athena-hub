@@ -24,7 +24,8 @@
   .gate-card p.lede{color:var(--muted);font-size:13.5px;margin:0 0 22px;}
   label{display:block;font-size:13px;font-weight:600;margin:0 0 6px;}
   .field{margin-bottom:16px;}
-  input[type=email],input[type=password]{
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  input[type=email],input[type=password],input[type=text],input[type=tel],select{
     width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;
   }
   input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,77,184,.15);}
@@ -177,16 +178,18 @@
           so the customer can redeem it on Athena's signup page.
         </p>
         <div id="perpetual-msg" class="msg"></div>
-        <form id="perpetual-form" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
-          <div class="field" style="flex:1;min-width:220px;margin-bottom:0;">
-            <label for="perpetual-email">Customer email</label>
-            <input type="email" id="perpetual-email" required />
+        <form id="perpetual-form">
+          <div class="field-row">
+            <div class="field">
+              <label for="perpetual-email">Customer email</label>
+              <input type="email" id="perpetual-email" required />
+            </div>
+            <div class="field">
+              <label for="perpetual-code">Code (from Lab admin)</label>
+              <input type="text" id="perpetual-code" required placeholder="SPH-11F9U-JQMPW" style="text-transform:uppercase;" />
+            </div>
           </div>
-          <div class="field" style="flex:1;min-width:180px;margin-bottom:0;">
-            <label for="perpetual-code">Code (from Lab admin)</label>
-            <input type="text" id="perpetual-code" required placeholder="e.g. SPH-11F9U-JQMPW" style="text-transform:uppercase;" />
-          </div>
-          <button type="submit" class="btn" id="perpetual-submit">Add code</button>
+          <button type="submit" class="btn" id="perpetual-submit" style="width:auto;padding:11px 22px;">Add code</button>
         </form>
       </div>
 
