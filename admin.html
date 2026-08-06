@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Athena — Staff Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --accent:#7C4DB8; --accent-dark:#583A82;
+    --ink:#211B2B; --muted:#6E6779; --line:#E7E3EE; --bg:#FAFAFC;
+    --error:#B3392B; --error-bg:#FBEAE7;
+    --success:#2F7A54; --success-bg:#EAF6EF;
+    --warn:#9A6B12; --warn-bg:#FBF3E0;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',system-ui,sans-serif;color:var(--ink);background:var(--bg);}
+
+  /* ---------- Login gate ---------- */
+  .gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+  .gate-card{width:100%;max-width:360px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:32px;}
+  .gate-card h1{font-family:'Fraunces',serif;font-weight:600;font-size:22px;margin:0 0 4px;}
+  .gate-card p.lede{color:var(--muted);font-size:13.5px;margin:0 0 22px;}
+  label{display:block;font-size:13px;font-weight:600;margin:0 0 6px;}
+  .field{margin-bottom:16px;}
+  input[type=email],input[type=password]{
+    width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;
+  }
+  input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,77,184,.15);}
+  .btn{padding:10px 16px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-weight:600;font-size:14px;cursor:pointer;font-family:inherit;}
+  .btn:hover{background:var(--accent-dark);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .btn-sm{padding:6px 12px;font-size:13px;border-radius:6px;}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink);}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent-dark);}
+
+  .msg{border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.5;margin:0 0 16px;display:none;}
+  .msg.show{display:block;}
+  .msg.error{background:var(--error-bg);color:var(--error);}
+  .msg.success{background:var(--success-bg);color:var(--success);}
+
+  /* ---------- Admin shell ---------- */
+  .app{display:none;}
+  .app.show{display:block;}
+  header.top{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 28px;border-bottom:1px solid var(--line);background:#fff;
+  }
+  .brand{display:flex;align-items:baseline;gap:8px;}
+  .brand .name{font-family:'Fraunces',serif;font-weight:600;font-size:20px;}
+  .brand .sub{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;}
+  .who{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:12px;}
+
+  main{max-width:980px;margin:0 auto;padding:28px 24px 60px;}
+
+  .tabs{display:flex;gap:6px;margin-bottom:22px;border-bottom:1px solid var(--line);}
+  .tab{padding:10px 4px;margin-right:20px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;}
+  .tab.active{color:var(--accent-dark);border-bottom-color:var(--accent);}
+
+  .panel-view{display:none;}
+  .panel-view.active{display:block;}
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:left;padding:10px 14px;background:#F7F5FA;color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--line);}
+  td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{display:inline-block;padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:600;}
+  .badge.pending{background:var(--warn-bg);color:var(--warn);}
+  .badge.active{background:var(--success-bg);color:var(--success);}
+  .badge.suspended{background:var(--error-bg);color:var(--error);}
+
+  .empty{padding:36px;text-align:center;color:var(--muted);font-size:14px;}
+
+  .section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .section-head h2{font-family:'Fraunces',serif;font-weight:600;font-size:18px;margin:0;}
+  .refresh{font-size:13px;color:var(--accent-dark);cursor:pointer;text-decoration:underline;background:none;border:none;font-family:inherit;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN GATE -->
+<div class="gate" id="gate">
+  <div class="gate-card">
+    <h1>Athena — Staff Admin</h1>
+    <p class="lede">Sign in with your Soaphrodite Labs staff account.</p>
+    <div id="gate-msg" class="msg"></div>
+    <form id="gate-form">
+      <div class="field">
+        <label for="gate-email">Email</label>
+        <input type="email" id="gate-email" required autocomplete="email" />
+      </div>
+      <div class="field">
+        <label for="gate-password">Password</label>
+        <input type="password" id="gate-password" required autocomplete="current-password" />
+      </div>
+      <button type="submit" class="btn" id="gate-submit" style="width:100%;">Sign in</button>
+    </form>
+  </div>
+</div>
+
+<!-- ADMIN APP -->
+<div class="app" id="app">
+  <header class="top">
+    <div class="brand">
+      <span class="name">Athena</span>
+      <span class="sub">Staff Admin</span>
+    </div>
+    <div class="who">
+      <span id="who-email"></span>
+      <button class="btn-ghost btn-sm" id="sign-out">Sign out</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="tabs">
+      <div class="tab active" data-tab="pending">Pending Activation</div>
+      <div class="tab" data-tab="all">All Businesses</div>
+      <div class="tab" data-tab="resets">Password Resets</div>
+    </div>
+
+    <!-- PENDING -->
+    <div class="panel-view active" id="view-pending">
+      <div class="section-head">
+        <h2>Pending activation</h2>
+        <button class="refresh" data-refresh="pending">Refresh</button>
+      </div>
+      <div class="card">
+        <table id="table-pending"><thead>
+          <tr><th>Business</th><th>Email</th><th>Contact</th><th>Code</th><th>Signed up</th><th></th></tr>
+        </thead><tbody></tbody></table>
+        <div class="empty" id="empty-pending" style="display:none;">No businesses waiting on activation.</div>
+      </div>
+    </div>
+
+    <!-- ALL -->
+    <div class="panel-view" id="view-all">
+      <div class="section-head">
+        <h2>All businesses</h2>
+        <button class="refresh" data-refresh="all">Refresh</button>
+      </div>
+      <div class="card">
+        <table id="table-all"><thead>
+          <tr><th>Business</th><th>Email</th><th>Status</th><th>Signed up</th><th>Activated</th></tr>
+        </thead><tbody></tbody></table>
+        <div class="empty" id="empty-all" style="display:none;">No businesses yet.</div>
+      </div>
+    </div>
+
+    <!-- PASSWORD RESETS -->
+    <div class="panel-view" id="view-resets">
+      <div class="section-head">
+        <h2>Password reset requests</h2>
+        <button class="refresh" data-refresh="resets">Refresh</button>
+      </div>
+      <div class="card">
+        <table id="table-resets"><thead>
+          <tr><th>Business</th><th>Email</th><th>Requested</th><th></th></tr>
+        </thead><tbody></tbody></table>
+        <div class="empty" id="empty-resets" style="display:none;">No pending password reset requests.</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  const SUPABASE_URL = 'https://nitbsqhvjhdappgsghci.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pdGJzcWh2amhkYXBwZ3NnaGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzgxNDksImV4cCI6MjEwMTUxNDE0OX0.r0wKMkslE1dOJIpy62bzDzfoEUvw73AA5A9GeMcnhnI';
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const $ = (id) => document.getElementById(id);
+
+  function fmtDate(iso){
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  }
+  function showMsg(el, text, type){ el.textContent = text; el.className = 'msg show ' + type; }
+  function hideMsg(el){ el.className = 'msg'; }
+
+  let currentUserEmail = '';
+
+  // ---------------- Auth gate ----------------
+  $('gate-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('gate-msg');
+    hideMsg(msg);
+    const btn = $('gate-submit');
+    btn.disabled = true; btn.textContent = 'Signing in…';
+
+    const email = $('gate-email').value.trim();
+    const password = $('gate-password').value;
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInError) {
+      showMsg(msg, 'Incorrect email or password.', 'error');
+      btn.disabled = false; btn.textContent = 'Sign in';
+      return;
+    }
+
+    const { data: isStaff, error: staffError } = await supabase.rpc('fn_is_lab_staff');
+    if (staffError || !isStaff) {
+      showMsg(msg, 'This account is not authorized for staff admin access.', 'error');
+      await supabase.auth.signOut();
+      btn.disabled = false; btn.textContent = 'Sign in';
+      return;
+    }
+
+    currentUserEmail = email;
+    $('who-email').textContent = email;
+    $('gate').style.display = 'none';
+    $('app').classList.add('show');
+    loadPending();
+  });
+
+  $('sign-out').addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    window.location.reload();
+  });
+
+  // ---------------- Tabs ----------------
+  document.querySelectorAll('.tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel-view').forEach(v => v.classList.remove('active'));
+      tab.classList.add('active');
+      const name = tab.dataset.tab;
+      $('view-' + name).classList.add('active');
+      if (name === 'pending') loadPending();
+      if (name === 'all') loadAll();
+      if (name === 'resets') loadResets();
+    });
+  });
+  document.querySelectorAll('[data-refresh]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.refresh;
+      if (name === 'pending') loadPending();
+      if (name === 'all') loadAll();
+      if (name === 'resets') loadResets();
+    });
+  });
+
+  // ---------------- Pending activation ----------------
+  async function loadPending(){
+    const tbody = document.querySelector('#table-pending tbody');
+    tbody.innerHTML = '';
+    const { data, error } = await supabase.rpc('fn_admin_list_businesses', { p_status: 'pending_activation' });
+
+    if (error || !data || data.length === 0) {
+      $('empty-pending').style.display = 'block';
+      return;
+    }
+    $('empty-pending').style.display = 'none';
+
+    data.forEach((b) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${b.business_name}</td>
+        <td>${b.email}</td>
+        <td>${b.signup_contact_number || '—'}</td>
+        <td>${b.plan_code}</td>
+        <td>${fmtDate(b.signup_at)}</td>
+        <td><button class="btn btn-sm activate-btn">Activate Athena Hub</button></td>
+      `;
+      tr.querySelector('.activate-btn').addEventListener('click', async (ev) => {
+        ev.target.disabled = true; ev.target.textContent = 'Activating…';
+        const { error: actError } = await supabase.rpc('fn_activate_business', {
+          p_business_id: b.id,
+          p_activated_by: currentUserEmail,
+        });
+        if (actError) {
+          ev.target.disabled = false; ev.target.textContent = 'Activate Athena Hub';
+          alert('Could not activate: ' + actError.message);
+          return;
+        }
+        loadPending();
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------------- All businesses ----------------
+  async function loadAll(){
+    const tbody = document.querySelector('#table-all tbody');
+    tbody.innerHTML = '';
+    const { data, error } = await supabase.rpc('fn_admin_list_businesses', { p_status: null });
+
+    if (error || !data || data.length === 0) {
+      $('empty-all').style.display = 'block';
+      return;
+    }
+    $('empty-all').style.display = 'none';
+
+    data.forEach((b) => {
+      const tr = document.createElement('tr');
+      const badgeClass = b.status === 'active' ? 'active' : b.status === 'suspended' ? 'suspended' : 'pending';
+      const badgeLabel = b.status === 'pending_activation' ? 'pending' : b.status;
+      tr.innerHTML = `
+        <td>${b.business_name}</td>
+        <td>${b.email}</td>
+        <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
+        <td>${fmtDate(b.signup_at)}</td>
+        <td>${fmtDate(b.activated_at)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------------- Password resets ----------------
+  async function loadResets(){
+    const tbody = document.querySelector('#table-resets tbody');
+    tbody.innerHTML = '';
+    const { data, error } = await supabase.rpc('fn_admin_list_password_resets', { p_status: 'pending' });
+
+    if (error || !data || data.length === 0) {
+      $('empty-resets').style.display = 'block';
+      return;
+    }
+    $('empty-resets').style.display = 'none';
+
+    data.forEach((r) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${r.business_name}</td>
+        <td>${r.email}</td>
+        <td>${fmtDate(r.requested_at)}</td>
+        <td><button class="btn btn-sm resolve-btn">Mark password sent</button></td>
+      `;
+      tr.querySelector('.resolve-btn').addEventListener('click', async (ev) => {
+        ev.target.disabled = true; ev.target.textContent = 'Saving…';
+        const { error: resolveError } = await supabase.rpc('fn_admin_resolve_password_reset', {
+          p_request_id: r.id,
+          p_resolved_by: currentUserEmail,
+        });
+        if (resolveError) {
+          ev.target.disabled = false; ev.target.textContent = 'Mark password sent';
+          alert('Could not update: ' + resolveError.message);
+          return;
+        }
+        loadResets();
+      });
+      tbody.appendChild(tr);
+    });
+  }
+</script>
+</body>
+</html>
