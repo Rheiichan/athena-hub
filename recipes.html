@@ -1,0 +1,1196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Athena — Recipe Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --accent:#7C4DB8; --accent-dark:#583A82; --accent-soft:#F1ECFA; --accent-ink:#3B2260;
+    --ink:#211B2B; --muted:#6E6779; --line:#E7E3EE; --card:#FFFFFF; --bg:#FAFAFC;
+    --sidebar-bg:#211B2B; --sidebar-ink:#F3EEFA; --sidebar-muted:#B9AFC9;
+    --success:#2F7A54; --success-bg:#EAF6EF; --error:#B3392B; --error-bg:#FBEAE7;
+    --warn:#9A6B12; --warn-bg:#FBF3E0;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',system-ui,sans-serif;color:var(--ink);background:var(--bg);}
+  a{color:inherit;text-decoration:none;}
+
+  .splash{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--sidebar-bg);color:var(--sidebar-ink);}
+  .splash .mark{font-family:'Fraunces',serif;font-weight:500;font-size:32px;opacity:.85;}
+
+  .shell{display:none;min-height:100vh;grid-template-columns:250px 1fr;}
+  .shell.show{display:grid;}
+  @media (max-width:900px){ .shell.show{grid-template-columns:1fr;} }
+
+  .sidebar{background:var(--sidebar-bg);color:var(--sidebar-ink);padding:26px 20px;display:flex;flex-direction:column;}
+  @media (max-width:900px){ .sidebar{display:none;} }
+
+  .biz-name{font-family:'Fraunces',serif;font-weight:600;font-size:19px;color:var(--sidebar-ink);margin:2px 0 26px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.12);line-height:1.25;text-align:center;}
+  .sidebar-logo{width:56px;height:56px;border-radius:12px;object-fit:cover;margin:0 auto 10px;display:none;}
+  .sidebar-logo.show{display:block;}
+  .powered-by{font-size:10.5px;color:var(--accent);text-align:center;margin:16px 0 0;line-height:1.4;}
+
+  nav.modules{flex:1;display:flex;flex-direction:column;gap:2px;}
+  .nav-section-label{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--sidebar-muted);margin:16px 0 6px;padding:0 10px;}
+  .nav-section-label:first-child{margin-top:0;}
+  .nav-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:8px;font-size:14px;color:var(--sidebar-ink);cursor:pointer;}
+  .nav-item:hover{background:rgba(255,255,255,.08);}
+  .nav-item.active{background:rgba(255,255,255,.18);}
+  .nav-item .soon{font-size:10px;color:var(--sidebar-muted);border:1px solid rgba(255,255,255,.2);padding:1px 6px;border-radius:99px;}
+  .nav-item-main{display:flex;align-items:center;gap:10px;}
+  .nav-icon{width:17px;height:17px;flex-shrink:0;opacity:.9;}
+
+  .sidebar-foot{padding-top:16px;border-top:1px solid rgba(255,255,255,.12);}
+  .who{font-size:12.5px;color:var(--sidebar-muted);margin-bottom:10px;word-break:break-all;}
+  .signout-btn{width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--sidebar-ink);font-size:13px;cursor:pointer;font-family:inherit;}
+  .signout-btn:hover{background:rgba(255,255,255,.08);}
+
+  .mobile-bar{display:none;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--sidebar-bg);color:var(--sidebar-ink);}
+  @media (max-width:900px){ .mobile-bar{display:flex;} }
+  .mobile-bar .name{font-family:'Fraunces',serif;font-weight:600;font-size:18px;}
+
+  main{padding:36px 40px 60px;}
+  @media (max-width:900px){ main{padding:24px 20px 48px;} }
+
+  .page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px;flex-wrap:wrap;}
+  .page-head h1{font-family:'Fraunces',serif;font-weight:600;font-size:26px;margin:0 0 6px;color:var(--accent-ink);}
+  .page-head p{color:var(--muted);font-size:14.5px;margin:0;}
+
+  .btn{padding:11px 20px;border:none;border-radius:8px;background:var(--accent);color:var(--accent-ink);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .btn:hover{background:var(--accent-dark);}
+  .btn:disabled{opacity:.55;cursor:not-allowed;}
+  .btn-sm{padding:6px 12px;font-size:12.5px;border-radius:6px;}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink);}
+  .btn-ghost:hover{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-dark);}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:20px;}
+  .card-pad{padding:20px 22px;}
+
+  label{display:block;font-size:12.5px;font-weight:600;margin:0 0 6px;}
+  .field{margin-bottom:14px;}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media (max-width:560px){ .field-row{grid-template-columns:1fr;} }
+  input[type=text],input[type=number],select,textarea{
+    width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;
+    font-size:14px;font-family:inherit;color:var(--ink);background:var(--bg);
+  }
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,77,184,.15);}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:left;padding:10px 14px;background:var(--accent-soft);color:var(--accent-ink);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;}
+  td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  .empty-state{padding:40px;text-align:center;color:var(--muted);font-size:14px;}
+
+  .stock-badge{font-weight:700;}
+  .stock-low{color:var(--warn);}
+  .stock-zero{color:var(--error);}
+
+  .add-form{display:none;}
+  .add-form.show{display:block;}
+
+  .msg{border-radius:8px;padding:10px 13px;font-size:13px;line-height:1.5;margin:0 0 14px;display:none;}
+  .msg.show{display:block;}
+  .msg.error{background:var(--error-bg);color:var(--error);}
+  .msg.success{background:var(--success-bg);color:var(--success);}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(20,15,25,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:var(--card);border-radius:12px;padding:24px;max-width:400px;width:100%;max-height:80vh;overflow-y:auto;}
+  .modal h3{font-family:'Fraunces',serif;font-weight:600;font-size:18px;margin:0 0 4px;}
+  .modal .sub{color:var(--muted);font-size:13px;margin:0 0 18px;}
+  .modal-close{float:right;background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1;}
+
+  .history-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;}
+  .history-row:last-child{border-bottom:none;}
+  .history-qty{font-weight:700;}
+  .history-qty.pos{color:var(--success);}
+  .history-qty.neg{color:var(--error);}
+  .history-meta{color:var(--muted);font-size:11.5px;}
+
+  .qty-buttons{display:flex;gap:8px;margin-bottom:14px;}
+  .qty-buttons button{flex:1;padding:9px;border-radius:8px;border:1px solid var(--line);background:var(--bg);font-family:inherit;font-weight:600;cursor:pointer;}
+  .qty-buttons button.selected{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink);}
+
+  .tabs{display:flex;gap:24px;border-bottom:1px solid var(--line);margin-bottom:22px;}
+  .tab{padding:10px 2px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;}
+  .tab.active{color:var(--accent-ink);border-bottom-color:var(--accent);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  .row-item{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;}
+  .row-item.equipment-row{grid-template-columns:2fr 1fr auto;}
+  .row-item select, .row-item input{margin-bottom:0;}
+  .row-item .row-cost{font-size:12.5px;color:var(--muted);text-align:right;}
+  .row-remove{background:none;border:none;color:var(--error);cursor:pointer;font-size:18px;line-height:1;padding:4px 8px;}
+
+  .summary-box{background:var(--accent-soft);border-radius:10px;padding:16px 18px;margin:16px 0;}
+  .summary-line{display:flex;justify-content:space-between;font-size:13.5px;padding:3px 0;color:var(--accent-ink);}
+  .summary-line.total{font-weight:700;font-size:15px;border-top:1px solid rgba(0,0,0,.1);margin-top:6px;padding-top:8px;}
+
+  .shortage-banner{background:var(--error-bg);color:var(--error);border-radius:8px;padding:10px 14px;font-size:13px;margin:12px 0;display:none;}
+  .shortage-banner.show{display:block;}
+  .shortage-tag{color:var(--error);font-size:11.5px;font-weight:600;margin-left:6px;}
+
+  .toggle-row{display:flex;align-items:center;gap:10px;margin:14px 0;}
+  .switch{position:relative;width:42px;height:24px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .switch-track{position:absolute;inset:0;background:var(--line);border-radius:99px;cursor:pointer;transition:.15s;}
+  .switch-track:before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s;}
+  .switch input:checked + .switch-track{background:var(--accent);}
+  .switch input:checked + .switch-track:before{transform:translateX(18px);}
+
+  .tier-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center;}
+
+  .recipe-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:12px;}
+  .recipe-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+  .recipe-card h3{font-family:'Fraunces',serif;font-weight:600;font-size:16px;margin:0 0 4px;}
+  .recipe-card .meta{font-size:12.5px;color:var(--muted);}
+  .recipe-cost-pill{background:var(--accent-soft);color:var(--accent-ink);border-radius:99px;padding:4px 12px;font-size:12.5px;font-weight:700;white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<div class="splash" id="splash"><div class="mark">Athena</div></div>
+
+<div class="shell" id="shell">
+  <aside class="sidebar">
+    <img class="sidebar-logo" id="sidebar-logo" alt="" />
+    <p class="biz-name" id="sidebar-biz-name">—</p>
+
+    <nav class="modules">
+      <a class="nav-item" href="hub.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Dashboard</span>
+      </a>
+
+      <p class="nav-section-label">Sell &amp; Make</p>
+      <a class="nav-item" href="pos.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 12.4a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 2-1.6L21 8H6"/><circle cx="9" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/></svg>POS</span>
+        <span class="soon">Soon</span>
+      </a>
+      <div class="nav-item active">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v6l-5.5 9.5A1.8 1.8 0 0 0 6.1 21h11.8a1.8 1.8 0 0 0 1.6-2.5L14 9V3"/><path d="M7.5 15h9"/></svg>Recipe Calculator</span>
+      </div>
+
+      <p class="nav-section-label">Stock</p>
+      <a class="nav-item" href="product-inventory.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-5 9 5-9 5-9-5Z"/><path d="M3 8v9l9 5 9-5V8"/><path d="M12 13v9"/></svg>Product Inventory</span>
+      </a>
+      <a class="nav-item" href="materials-inventory.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M9.5 3v3.3L6.8 9.4A3 3 0 0 0 6 11.4V19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-7.6a3 3 0 0 0-.8-2L14.5 6.3V3"/></svg>Materials Inventory</span>
+      </a>
+      <a class="nav-item" href="procurement.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h10v9H3z"/><path d="M13 10h4l4 3.5V16h-8"/><circle cx="7" cy="18.5" r="1.6"/><circle cx="17.5" cy="18.5" r="1.6"/></svg>Procurement</span>
+        <span class="soon">Soon</span>
+      </a>
+
+      <p class="nav-section-label">Operate</p>
+      <a class="nav-item" href="scheduler.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9.5h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg>Scheduler</span>
+        <span class="soon">Soon</span>
+      </a>
+      <a class="nav-item" href="orders.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3.2h6a1 1 0 0 1 1 1V5.5H8V4.2a1 1 0 0 1 1-1Z"/><path d="M9 13l2 2 4-4.5"/></svg>Order Release Tracker</span>
+        <span class="soon">Soon</span>
+      </a>
+      <a class="nav-item" href="finances.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V11"/><path d="M10 20V4"/><path d="M16 20v-6.5"/><path d="M2 20h20"/></svg>Finances</span>
+        <span class="soon">Soon</span>
+      </a>
+      <a class="nav-item" href="employees.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><circle cx="17.5" cy="9" r="2.3"/><path d="M15 20a4.5 4.5 0 0 1 6.5-4"/></svg>Employees</span>
+        <span class="soon">Soon</span>
+      </a>
+
+      <p class="nav-section-label">Setup</p>
+      <a class="nav-item" href="settings.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.7 7.7 0 0 0 0-2l2-1.5-2-3.4-2.3.9a7.6 7.6 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.6 7.6 0 0 0-1.7 1l-2.3-.9-2 3.4L6.6 11a7.7 7.7 0 0 0 0 2l-2 1.5 2 3.4 2.3-.9a7.6 7.6 0 0 0 1.7 1L11 20.5h4l.4-2.5a7.6 7.6 0 0 0 1.7-1l2.3.9 2-3.4-2-1.5Z"/></svg>Business Settings</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <p class="who" id="who-email"></p>
+      <button class="signout-btn" id="sign-out">Sign out</button>
+      <p class="powered-by">Athena Business Hub by Soaphrodite Labs</p>
+    </div>
+  </aside>
+
+  <div>
+    <div class="mobile-bar">
+      <span class="name">Athena</span>
+      <button class="signout-btn" id="sign-out-mobile" style="width:auto;">Sign out</button>
+    </div>
+
+    <main>
+      <div class="page-head">
+        <div>
+          <h1>Recipe Calculator</h1>
+          <p>Cost out recipes from your materials and equipment, and optionally sell them via POS.</p>
+        </div>
+        <button class="btn" id="toggle-add-recipe-btn">+ New Recipe</button>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" data-tab="recipes">Recipes</div>
+        <div class="tab" data-tab="equipment">Equipment</div>
+      </div>
+
+      <!-- RECIPES TAB -->
+      <div class="tab-panel active" id="panel-recipes">
+
+        <div class="card add-form" id="recipe-editor-card">
+          <div class="card-pad">
+            <h3 id="editor-title" style="font-family:'Fraunces',serif;font-weight:600;font-size:16px;margin:0 0 14px;">New recipe</h3>
+            <div id="recipe-msg" class="msg"></div>
+
+            <div class="field">
+              <label for="r-name">Recipe name</label>
+              <input type="text" id="r-name" required />
+            </div>
+            <div class="field">
+              <label for="r-desc">Description (optional)</label>
+              <textarea id="r-desc" rows="2"></textarea>
+            </div>
+
+            <label>Recipe / batch is defined by</label>
+            <div class="qty-buttons" style="max-width:340px;">
+              <button type="button" class="batch-mode-btn selected" data-mode="quantity">By quantity</button>
+              <button type="button" class="batch-mode-btn" data-mode="percentage">By %</button>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="r-yield-qty">This recipe makes</label>
+                <input type="number" id="r-yield-qty" step="0.0001" min="0" placeholder="e.g. 1000" />
+              </div>
+              <div class="field">
+                <label for="r-yield-unit">Unit</label>
+                <select id="r-yield-unit">
+                  <option value="pcs">pcs</option>
+                  <option value="g">g</option>
+                  <option value="kg">kg</option>
+                  <option value="ml">ml</option>
+                  <option value="liter">liter</option>
+                  <option value="oz">oz</option>
+                  <option value="lb">lb</option>
+                  <option value="m">m</option>
+                  <option value="cm">cm</option>
+                  <option value="box">box</option>
+                  <option value="set">set</option>
+                  <option value="pair">pair</option>
+                  <option value="roll">roll</option>
+                  <option value="sheet">sheet</option>
+                  <option value="unit">unit</option>
+                </select>
+              </div>
+            </div>
+            <p class="hint" id="batch-mode-hint" style="margin:-8px 0 16px;color:var(--muted);font-size:12.5px;">Quantities below are entered directly, each in its own unit.</p>
+
+            <h4 style="font-size:13px;margin:16px 0 8px;">Materials</h4>
+            <div id="ingredient-rows"></div>
+            <button type="button" class="btn btn-ghost btn-sm" id="add-ingredient-row-btn">+ Add material</button>
+            <p class="hint" id="percent-total-hint" style="margin:8px 0 0;color:var(--muted);font-size:12.5px;"></p>
+
+            <div class="shortage-banner" id="shortage-banner"></div>
+
+            <h4 style="font-size:13px;margin:20px 0 8px;">Equipment (optional)</h4>
+            <div id="equipment-rows"></div>
+            <button type="button" class="btn btn-ghost btn-sm" id="add-equipment-row-btn">+ Add equipment</button>
+
+            <div class="summary-box" id="cost-summary">
+              <div class="summary-line"><span>Materials cost</span><span id="sum-materials">₱0.00</span></div>
+              <div class="summary-line"><span>Equipment cost</span><span id="sum-equipment">₱0.00</span></div>
+              <div class="summary-line total"><span>Total cost per batch</span><span id="sum-total">₱0.00</span></div>
+              <div class="summary-line"><span>Cost per <span id="sum-unit-label">unit</span></span><span id="sum-per-unit">₱0.00</span></div>
+            </div>
+
+            <div class="toggle-row">
+              <label class="switch"><input type="checkbox" id="add-to-pos-toggle" /><span class="switch-track"></span></label>
+              <label for="add-to-pos-toggle" style="margin:0;font-size:13.5px;">Add this recipe to POS as a product</label>
+            </div>
+
+            <div id="pos-fields" style="display:none;">
+              <div class="field">
+                <label for="pos-price">Price</label>
+                <input type="number" id="pos-price" step="0.01" min="0" />
+              </div>
+              <div class="toggle-row" style="margin-top:0;">
+                <label class="switch"><input type="checkbox" id="bracket-pricing-toggle" /><span class="switch-track"></span></label>
+                <label for="bracket-pricing-toggle" style="margin:0;font-size:13.5px;">Use bracket pricing by order quantity instead</label>
+              </div>
+              <div id="tier-rows-wrap" style="display:none;">
+                <div id="tier-rows-list"></div>
+                <button type="button" class="btn btn-ghost btn-sm" id="add-tier-row-btn">+ Add price tier</button>
+              </div>
+            </div>
+
+            <div style="margin-top:22px;">
+              <button type="button" class="btn" id="save-recipe-btn">Save recipe</button>
+              <button type="button" class="btn btn-ghost" id="cancel-recipe-btn" style="margin-left:8px;">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="recipe-list"></div>
+        <div class="empty-state" id="recipes-empty" style="display:none;">No recipes yet — create your first one above.</div>
+      </div>
+
+      <!-- EQUIPMENT TAB -->
+      <div class="tab-panel" id="panel-equipment">
+        <div class="page-head" style="margin-bottom:16px;">
+          <div><p style="color:var(--muted);font-size:14px;margin:0;">Machines and tools, with an amortized cost per use.</p></div>
+          <button class="btn" id="toggle-add-equipment-btn">+ Add Equipment</button>
+        </div>
+
+        <div class="card add-form" id="equipment-editor-card">
+          <div class="card-pad">
+            <h3 id="equipment-editor-title" style="font-family:'Fraunces',serif;font-weight:600;font-size:16px;margin:0 0 14px;">New equipment</h3>
+            <div id="equipment-msg" class="msg"></div>
+            <div class="field">
+              <label for="eq-name">Equipment name</label>
+              <input type="text" id="eq-name" required placeholder="e.g. Cutting Machine" />
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="eq-purchase-cost">Purchase cost</label>
+                <input type="number" id="eq-purchase-cost" step="0.01" min="0" />
+              </div>
+              <div class="field">
+                <label for="eq-purchase-date">Purchase date</label>
+                <input type="date" id="eq-purchase-date" />
+              </div>
+            </div>
+
+            <div class="qty-buttons">
+              <button type="button" class="eq-cost-mode-btn selected" data-mode="auto">Auto-calculate cost/use</button>
+              <button type="button" class="eq-cost-mode-btn" data-mode="manual">Enter manually</button>
+            </div>
+
+            <div id="eq-auto-fields">
+              <div class="field">
+                <label for="eq-estimated-uses">Estimated total uses</label>
+                <input type="number" id="eq-estimated-uses" step="1" min="0" placeholder="e.g. 5000" />
+              </div>
+              <p class="hint" id="eq-computed-cost-display" style="margin:-6px 0 14px;color:var(--muted);font-size:12.5px;">Cost per use will be calculated automatically.</p>
+            </div>
+            <div id="eq-manual-field" style="display:none;">
+              <div class="field">
+                <label for="eq-cost-per-use">Cost per use</label>
+                <input type="number" id="eq-cost-per-use" step="0.0001" min="0" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="eq-notes">Notes (optional)</label>
+              <textarea id="eq-notes" rows="2"></textarea>
+            </div>
+
+            <button type="button" class="btn" id="save-equipment-btn">Add equipment</button>
+            <button type="button" class="btn btn-ghost" id="cancel-equipment-btn" style="margin-left:8px;">Cancel</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <table>
+            <thead><tr><th>Equipment</th><th>Purchase Cost</th><th>Est. Uses</th><th>Cost/Use</th><th></th></tr></thead>
+            <tbody id="equipment-tbody"></tbody>
+          </table>
+          <div class="empty-state" id="equipment-empty" style="display:none;">No equipment logged yet.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- PRODUCE BATCH MODAL -->
+<div class="modal-overlay" id="produce-modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="produce-modal-close">&times;</button>
+    <h3 id="produce-modal-title">Produce batch</h3>
+    <p class="sub" id="produce-modal-sub"></p>
+    <div id="produce-msg" class="msg"></div>
+    <div class="field">
+      <label for="produce-batches">Number of batches</label>
+      <input type="number" id="produce-batches" value="1" min="0.01" step="0.01" />
+    </div>
+    <div id="produce-preview" style="font-size:13px;color:var(--muted);margin-bottom:14px;"></div>
+    <button class="btn" id="produce-confirm-btn" style="width:100%;">Produce &amp; update stock</button>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  const SUPABASE_URL = 'https://nitbsqhvjhdappgsghci.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pdGJzcWh2amhkYXBwZ3NnaGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzgxNDksImV4cCI6MjEwMTUxNDE0OX0.r0wKMkslE1dOJIpy62bzDzfoEUvw73AA5A9GeMcnhnI';
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const $ = (id) => document.getElementById(id);
+
+  const THEME_PALETTES = {
+    violet: { panel: '#5B3789', accent: '#B79AE0', accentDark: '#9E7BC9', accentSoft: '#F1ECFA', accentInk: '#3B2260' },
+    orange: { panel: '#8C4419', accent: '#F0B27A', accentDark: '#D89355', accentSoft: '#FBEEE2', accentInk: '#5C2C0E' },
+    red:    { panel: '#7A2A20', accent: '#F0A69C', accentDark: '#D98579', accentSoft: '#FBEAE7', accentInk: '#5C1F17' },
+    yellow: { panel: '#7A5A0C', accent: '#F0D27A', accentDark: '#D9B655', accentSoft: '#FBF3DD', accentInk: '#4A3706' },
+    green:  { panel: '#1F5A3B', accent: '#A8D9BE', accentDark: '#7FBE9C', accentSoft: '#E7F4ED', accentInk: '#0F3320' },
+    pink:   { panel: '#8C2F5C', accent: '#F0AECD', accentDark: '#D98CAF', accentSoft: '#FBEAF2', accentInk: '#5C1D3B' },
+  };
+
+  function applyTheme(color, mode){
+    const palette = THEME_PALETTES[color] || THEME_PALETTES.violet;
+    const root = document.documentElement.style;
+    root.setProperty('--accent', palette.accent);
+    root.setProperty('--accent-dark', palette.accentDark);
+    root.setProperty('--accent-soft', palette.accentSoft);
+    root.setProperty('--accent-ink', palette.accentInk);
+    root.setProperty('--sidebar-bg', palette.panel);
+    if (mode === 'dark') {
+      root.setProperty('--bg', '#17151B'); root.setProperty('--card', '#211E27');
+      root.setProperty('--ink', '#F3EEFA'); root.setProperty('--muted', '#A79FB3'); root.setProperty('--line', '#37333F');
+    } else {
+      root.setProperty('--bg', '#FAFAFC'); root.setProperty('--card', '#FFFFFF');
+      root.setProperty('--ink', '#211B2B'); root.setProperty('--muted', '#6E6779'); root.setProperty('--line', '#E7E3EE');
+    }
+  }
+
+  function updateSidebarLogo(url){
+    const img = $('sidebar-logo');
+    if (url) { img.src = url; img.classList.add('show'); }
+    else { img.classList.remove('show'); img.removeAttribute('src'); }
+  }
+
+  function showMsg(el, text, type){ el.textContent = text; el.className = 'msg show ' + type; }
+  function hideMsg(el){ el.className = 'msg'; }
+  function fmtDate(iso){ return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }); }
+
+  async function signOutAndRedirect(){
+    await supabase.auth.signOut();
+    window.location.href = 'login.html';
+  }
+
+  const UNIT_OPTIONS = ['pcs','g','kg','ml','liter','oz','lb','m','cm','box','set','pair','roll','sheet','unit'];
+
+  let businessId = null;
+  let allMaterials = [];
+  let allEquipment = [];
+  let allProducts = [];
+  let recipes = [];
+  let recipeIngredientsMap = {}; // recipe_id -> [{ingredient_id, quantity, unit}]
+  let recipeEquipmentMap = {};   // recipe_id -> [{equipment_id, uses_per_batch}]
+
+  let editingRecipeId = null;
+  let batchMode = 'quantity';
+  let ingredientRows = [];   // working state while editing: {ingredient_id, quantity, unit}
+  let equipmentRows = [];    // working state: {equipment_id, uses_per_batch}
+  let tierRows = [];         // working state: {min_qty, max_qty, price}
+
+  let editingEquipmentId = null;
+  let eqCostMode = 'auto';
+
+  function peso(n){ return '₱' + (Number(n) || 0).toFixed(2); }
+
+  // ---------------- Tabs ----------------
+  document.querySelectorAll('.tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      $('panel-' + tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ---------------- Load reference data ----------------
+  async function loadMaterials(){
+    const { data } = await supabase.rpc('fn_list_ingredients_with_stock');
+    allMaterials = data || [];
+  }
+  async function loadEquipmentList(){
+    const { data } = await supabase.from('equipment').select('*').eq('is_active', true).order('created_at', { ascending: false });
+    allEquipment = data || [];
+    renderEquipmentTable();
+  }
+  async function loadProductsList(){
+    const { data } = await supabase.from('products').select('id, name, recipe_id, price');
+    allProducts = data || [];
+  }
+
+  // ---------------- Recipes: load + cost computation ----------------
+  async function loadRecipes(){
+    const { data: recipeRows } = await supabase.from('recipes').select('*').order('created_at', { ascending: false });
+    recipes = recipeRows || [];
+
+    const { data: riRows } = await supabase.from('recipe_ingredients').select('*');
+    const { data: reRows } = await supabase.from('recipe_equipment').select('*');
+
+    recipeIngredientsMap = {};
+    (riRows || []).forEach((r) => {
+      (recipeIngredientsMap[r.recipe_id] ||= []).push(r);
+    });
+    recipeEquipmentMap = {};
+    (reRows || []).forEach((r) => {
+      (recipeEquipmentMap[r.recipe_id] ||= []).push(r);
+    });
+
+    renderRecipeList();
+  }
+
+  function computeRecipeCost(recipe){
+    const ris = recipeIngredientsMap[recipe.id] || [];
+    const res = recipeEquipmentMap[recipe.id] || [];
+    let materialsCost = 0, shortages = [];
+
+    ris.forEach((ri) => {
+      const mat = allMaterials.find(m => m.id === ri.ingredient_id);
+      if (!mat) return;
+      const actualQty = recipe.batch_mode === 'percentage'
+        ? (ri.quantity / 100) * (recipe.yield_qty || 0)
+        : ri.quantity;
+      materialsCost += actualQty * (mat.cost_per_unit || 0);
+      if (actualQty > mat.current_stock) {
+        shortages.push({ name: mat.name, short: actualQty - mat.current_stock, unit: mat.unit });
+      }
+    });
+
+    let equipmentCost = 0;
+    res.forEach((re) => {
+      const eq = allEquipment.find(e => e.id === re.equipment_id);
+      if (!eq) return;
+      equipmentCost += re.uses_per_batch * (eq.cost_per_use || 0);
+    });
+
+    const total = materialsCost + equipmentCost;
+    const perUnit = recipe.yield_qty > 0 ? total / recipe.yield_qty : 0;
+    return { materialsCost, equipmentCost, total, perUnit, shortages };
+  }
+
+  function renderRecipeList(){
+    const wrap = $('recipe-list');
+    wrap.innerHTML = '';
+    if (recipes.length === 0) {
+      $('recipes-empty').style.display = 'block';
+      return;
+    }
+    $('recipes-empty').style.display = 'none';
+
+    recipes.forEach((r) => {
+      const cost = computeRecipeCost(r);
+      const linkedProduct = allProducts.find(p => p.recipe_id === r.id);
+      const card = document.createElement('div');
+      card.className = 'recipe-card';
+      card.innerHTML = `
+        <div class="recipe-card-head">
+          <div>
+            <h3>${r.name}${linkedProduct ? ' <span style="font-size:11px;font-weight:600;color:var(--accent-ink);background:var(--accent-soft);padding:2px 8px;border-radius:99px;">In POS</span>' : ''}</h3>
+            <div class="meta">Makes ${r.yield_qty || 0} ${r.yield_unit || ''} · ${r.batch_mode === 'percentage' ? 'By %' : 'By quantity'} · ${peso(cost.perUnit)}/${r.yield_unit || 'unit'}</div>
+            ${cost.shortages.length ? `<div class="shortage-tag" style="display:inline-block;margin-top:6px;">⚠ Short on ${cost.shortages.length} material(s)</div>` : ''}
+          </div>
+          <div class="recipe-cost-pill">${peso(cost.total)} / batch</div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-sm btn-ghost edit-recipe-btn">Edit</button>
+          <button class="btn btn-sm btn-ghost produce-btn">Produce Batch</button>
+          <button class="btn btn-sm btn-ghost delete-recipe-btn" style="color:var(--error);">Delete</button>
+        </div>
+      `;
+      card.querySelector('.edit-recipe-btn').addEventListener('click', () => openRecipeEditor(r));
+      card.querySelector('.produce-btn').addEventListener('click', () => openProduceModal(r));
+      card.querySelector('.delete-recipe-btn').addEventListener('click', () => deleteRecipe(r));
+      wrap.appendChild(card);
+    });
+  }
+
+  async function deleteRecipe(r){
+    const ok = confirm(`Delete recipe "${r.name}"? This won't delete any linked product, just the recipe itself.`);
+    if (!ok) return;
+    const { error } = await supabase.from('recipes').delete().eq('id', r.id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    await loadRecipes();
+  }
+
+  // ---------------- Recipe editor ----------------
+  $('toggle-add-recipe-btn').addEventListener('click', () => openRecipeEditor(null));
+  $('cancel-recipe-btn').addEventListener('click', () => closeRecipeEditor());
+
+  function closeRecipeEditor(){
+    $('recipe-editor-card').classList.remove('show');
+  }
+
+  function openRecipeEditor(recipe){
+    editingRecipeId = recipe ? recipe.id : null;
+    $('editor-title').textContent = recipe ? `Edit — ${recipe.name}` : 'New recipe';
+    hideMsg($('recipe-msg'));
+
+    $('r-name').value = recipe ? recipe.name : '';
+    $('r-desc').value = recipe ? (recipe.description || '') : '';
+    $('r-yield-qty').value = recipe ? (recipe.yield_qty || '') : '';
+    $('r-yield-unit').value = recipe ? (recipe.yield_unit || 'pcs') : 'pcs';
+
+    batchMode = recipe ? recipe.batch_mode : 'quantity';
+    document.querySelectorAll('.batch-mode-btn').forEach(b => b.classList.toggle('selected', b.dataset.mode === batchMode));
+    $('batch-mode-hint').textContent = batchMode === 'percentage'
+      ? 'Percentages are of the total batch size above — they should add up to 100%.'
+      : 'Quantities below are entered directly, each in its own unit.';
+
+    ingredientRows = recipe
+      ? (recipeIngredientsMap[recipe.id] || []).map(ri => ({ ingredient_id: ri.ingredient_id, quantity: ri.quantity, unit: ri.unit }))
+      : [];
+    equipmentRows = recipe
+      ? (recipeEquipmentMap[recipe.id] || []).map(re => ({ equipment_id: re.equipment_id, uses_per_batch: re.uses_per_batch }))
+      : [];
+
+    const linkedProduct = recipe ? allProducts.find(p => p.recipe_id === recipe.id) : null;
+    $('add-to-pos-toggle').checked = !!linkedProduct;
+    $('pos-fields').style.display = linkedProduct ? 'block' : 'none';
+    $('pos-price').value = linkedProduct ? (linkedProduct.price || '') : '';
+    tierRows = [];
+    $('bracket-pricing-toggle').checked = false;
+    $('tier-rows-wrap').style.display = 'none';
+    if (linkedProduct) loadExistingTiers(linkedProduct.id);
+
+    renderIngredientRows();
+    renderEquipmentRowsInEditor();
+    renderTierRows();
+    $('recipe-editor-card').classList.add('show');
+    $('recipe-editor-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function loadExistingTiers(productId){
+    const { data } = await supabase.from('product_price_tiers').select('*').eq('product_id', productId).order('min_qty');
+    if (data && data.length > 0) {
+      tierRows = data.map(t => ({ min_qty: t.min_qty, max_qty: t.max_qty, price: t.price }));
+      $('bracket-pricing-toggle').checked = true;
+      $('tier-rows-wrap').style.display = 'block';
+      $('pos-fields').querySelector('#pos-price').closest('.field').style.display = 'none';
+      renderTierRows();
+    }
+  }
+
+  document.querySelectorAll('.batch-mode-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      batchMode = btn.dataset.mode;
+      document.querySelectorAll('.batch-mode-btn').forEach(b => b.classList.toggle('selected', b === btn));
+      $('batch-mode-hint').textContent = batchMode === 'percentage'
+        ? 'Percentages are of the total batch size above — they should add up to 100%.'
+        : 'Quantities below are entered directly, each in its own unit.';
+      renderIngredientRows();
+    });
+  });
+
+  $('r-yield-qty').addEventListener('input', () => { updateAllIngredientInfo(); });
+  $('r-yield-unit').addEventListener('change', () => { updateAllIngredientInfo(); });
+
+  // ---------------- Ingredient rows ----------------
+  $('add-ingredient-row-btn').addEventListener('click', () => {
+    ingredientRows.push({ ingredient_id: '', quantity: '', unit: 'g' });
+    renderIngredientRows();
+  });
+
+  function renderIngredientRows(){
+    const wrap = $('ingredient-rows');
+    wrap.innerHTML = '';
+    ingredientRows.forEach((row, idx) => {
+      const div = document.createElement('div');
+      div.className = 'row-item';
+      const unitCell = batchMode === 'quantity'
+        ? `<select class="ing-unit" data-idx="${idx}">${UNIT_OPTIONS.map(u => `<option value="${u}" ${row.unit === u ? 'selected' : ''}>${u}</option>`).join('')}</select>`
+        : `<div class="row-cost">% of batch</div>`;
+      div.innerHTML = `
+        <select class="ing-material" data-idx="${idx}">
+          <option value="">Select material…</option>
+          ${allMaterials.map(m => `<option value="${m.id}" ${m.id === row.ingredient_id ? 'selected' : ''}>${m.name}</option>`).join('')}
+        </select>
+        <input type="number" class="ing-qty" data-idx="${idx}" step="0.0001" min="0" placeholder="${batchMode === 'percentage' ? '%' : 'qty'}" value="${row.quantity ?? ''}" />
+        ${unitCell}
+        <button type="button" class="row-remove" data-idx="${idx}">&times;</button>
+      `;
+      wrap.appendChild(div);
+      const info = document.createElement('div');
+      info.id = `ing-info-${idx}`;
+      info.style.cssText = 'font-size:11.5px;color:var(--muted);margin:-4px 0 10px;';
+      wrap.appendChild(info);
+    });
+
+    wrap.querySelectorAll('.ing-material').forEach((el) => el.addEventListener('change', (e) => {
+      const idx = +e.target.dataset.idx;
+      ingredientRows[idx].ingredient_id = e.target.value;
+      const mat = allMaterials.find(m => m.id === e.target.value);
+      if (mat && batchMode === 'quantity') ingredientRows[idx].unit = mat.unit || 'g';
+      renderIngredientRows();
+    }));
+    wrap.querySelectorAll('.ing-qty').forEach((el) => el.addEventListener('input', (e) => {
+      ingredientRows[+e.target.dataset.idx].quantity = e.target.value;
+      updateAllIngredientInfo();
+    }));
+    wrap.querySelectorAll('.ing-unit').forEach((el) => el.addEventListener('change', (e) => {
+      ingredientRows[+e.target.dataset.idx].unit = e.target.value;
+      updateAllIngredientInfo();
+    }));
+    wrap.querySelectorAll('.row-remove').forEach((el) => el.addEventListener('click', (e) => {
+      ingredientRows.splice(+e.target.dataset.idx, 1);
+      renderIngredientRows();
+    }));
+
+    updateAllIngredientInfo();
+  }
+
+  function updateAllIngredientInfo(){
+    const yieldQty = parseFloat($('r-yield-qty').value) || 0;
+    const yieldUnit = $('r-yield-unit').value;
+    let shortageCount = 0;
+
+    ingredientRows.forEach((row, idx) => {
+      const material = allMaterials.find(m => m.id === row.ingredient_id);
+      const info = document.getElementById(`ing-info-${idx}`);
+      if (!info) return;
+      const actualQty = batchMode === 'percentage' ? ((parseFloat(row.quantity) || 0) / 100) * yieldQty : (parseFloat(row.quantity) || 0);
+      const cost = material ? actualQty * (material.cost_per_unit || 0) : 0;
+      let html = material ? `${actualQty.toFixed(3)} ${batchMode === 'percentage' ? yieldUnit : (row.unit || '')} · ${peso(cost)}` : '';
+      if (material && actualQty > material.current_stock) {
+        shortageCount++;
+        html += ` <span class="shortage-tag">Short by ${(actualQty - material.current_stock).toFixed(3)} ${material.unit} (have ${material.current_stock})</span>`;
+      }
+      info.innerHTML = html;
+    });
+
+    const banner = $('shortage-banner');
+    if (shortageCount > 0) {
+      banner.textContent = `⚠ Not enough stock for ${shortageCount} material${shortageCount > 1 ? 's' : ''}. You can still save the recipe — just make sure to restock before producing.`;
+      banner.classList.add('show');
+    } else {
+      banner.classList.remove('show');
+    }
+
+    updatePercentTotalHint();
+    updateSummary();
+  }
+
+  function updatePercentTotalHint(){
+    const hint = $('percent-total-hint');
+    if (batchMode !== 'percentage') { hint.textContent = ''; return; }
+    const total = ingredientRows.reduce((sum, r) => sum + (parseFloat(r.quantity) || 0), 0);
+    hint.textContent = `Total: ${total.toFixed(1)}%` + (Math.abs(total - 100) > 0.5 ? ' — should add up to 100%' : ' ✓');
+    hint.style.color = Math.abs(total - 100) > 0.5 ? 'var(--error)' : 'var(--success)';
+  }
+
+  // ---------------- Equipment rows (inside recipe editor) ----------------
+  $('add-equipment-row-btn').addEventListener('click', () => {
+    equipmentRows.push({ equipment_id: '', uses_per_batch: 1 });
+    renderEquipmentRowsInEditor();
+  });
+
+  function renderEquipmentRowsInEditor(){
+    const wrap = $('equipment-rows');
+    wrap.innerHTML = '';
+    equipmentRows.forEach((row, idx) => {
+      const div = document.createElement('div');
+      div.className = 'row-item equipment-row';
+      div.innerHTML = `
+        <select class="req-equipment" data-idx="${idx}">
+          <option value="">Select equipment…</option>
+          ${allEquipment.map(e => `<option value="${e.id}" ${e.id === row.equipment_id ? 'selected' : ''}>${e.name}</option>`).join('')}
+        </select>
+        <input type="number" class="req-uses" data-idx="${idx}" step="1" min="0" value="${row.uses_per_batch ?? 1}" placeholder="uses/batch" />
+        <button type="button" class="row-remove" data-idx="${idx}">&times;</button>
+      `;
+      wrap.appendChild(div);
+      const info = document.createElement('div');
+      info.id = `eq-row-info-${idx}`;
+      info.style.cssText = 'font-size:11.5px;color:var(--muted);margin:-4px 0 10px;';
+      wrap.appendChild(info);
+    });
+
+    wrap.querySelectorAll('.req-equipment').forEach((el) => el.addEventListener('change', (e) => {
+      equipmentRows[+e.target.dataset.idx].equipment_id = e.target.value;
+      renderEquipmentRowsInEditor();
+    }));
+    wrap.querySelectorAll('.req-uses').forEach((el) => el.addEventListener('input', (e) => {
+      equipmentRows[+e.target.dataset.idx].uses_per_batch = e.target.value;
+      updateEquipmentRowInfo();
+      updateSummary();
+    }));
+    wrap.querySelectorAll('.row-remove').forEach((el) => el.addEventListener('click', (e) => {
+      equipmentRows.splice(+e.target.dataset.idx, 1);
+      renderEquipmentRowsInEditor();
+      updateSummary();
+    }));
+
+    updateEquipmentRowInfo();
+    updateSummary();
+  }
+
+  function updateEquipmentRowInfo(){
+    equipmentRows.forEach((row, idx) => {
+      const eq = allEquipment.find(e => e.id === row.equipment_id);
+      const info = document.getElementById(`eq-row-info-${idx}`);
+      if (!info) return;
+      const cost = eq ? (parseFloat(row.uses_per_batch) || 0) * (eq.cost_per_use || 0) : 0;
+      info.textContent = eq ? `${peso(cost)} per batch` : '';
+    });
+  }
+
+  // ---------------- Cost summary ----------------
+  function updateSummary(){
+    const yieldQty = parseFloat($('r-yield-qty').value) || 0;
+    const yieldUnit = $('r-yield-unit').value;
+
+    let materialsCost = 0;
+    ingredientRows.forEach((row) => {
+      const material = allMaterials.find(m => m.id === row.ingredient_id);
+      if (!material) return;
+      const actualQty = batchMode === 'percentage' ? ((parseFloat(row.quantity) || 0) / 100) * yieldQty : (parseFloat(row.quantity) || 0);
+      materialsCost += actualQty * (material.cost_per_unit || 0);
+    });
+
+    let equipmentCost = 0;
+    equipmentRows.forEach((row) => {
+      const eq = allEquipment.find(e => e.id === row.equipment_id);
+      if (!eq) return;
+      equipmentCost += (parseFloat(row.uses_per_batch) || 0) * (eq.cost_per_use || 0);
+    });
+
+    const total = materialsCost + equipmentCost;
+    const perUnit = yieldQty > 0 ? total / yieldQty : 0;
+
+    $('sum-materials').textContent = peso(materialsCost);
+    $('sum-equipment').textContent = peso(equipmentCost);
+    $('sum-total').textContent = peso(total);
+    $('sum-unit-label').textContent = yieldUnit || 'unit';
+    $('sum-per-unit').textContent = peso(perUnit);
+  }
+
+  // ---------------- POS / pricing toggles ----------------
+  $('add-to-pos-toggle').addEventListener('change', (e) => {
+    $('pos-fields').style.display = e.target.checked ? 'block' : 'none';
+  });
+  $('bracket-pricing-toggle').addEventListener('change', (e) => {
+    $('tier-rows-wrap').style.display = e.target.checked ? 'block' : 'none';
+    $('pos-price').closest('.field').style.display = e.target.checked ? 'none' : 'block';
+    if (e.target.checked && tierRows.length === 0) {
+      tierRows.push({ min_qty: 1, max_qty: null, price: '' });
+      renderTierRows();
+    }
+  });
+  $('add-tier-row-btn').addEventListener('click', () => {
+    tierRows.push({ min_qty: '', max_qty: '', price: '' });
+    renderTierRows();
+  });
+
+  function renderTierRows(){
+    const wrap = $('tier-rows-list');
+    wrap.innerHTML = '';
+    tierRows.forEach((t, idx) => {
+      const div = document.createElement('div');
+      div.className = 'tier-row';
+      div.innerHTML = `
+        <input type="number" class="tier-min" data-idx="${idx}" placeholder="Min qty" min="1" value="${t.min_qty ?? ''}" />
+        <input type="number" class="tier-max" data-idx="${idx}" placeholder="Max qty (blank = and up)" min="1" value="${t.max_qty ?? ''}" />
+        <input type="number" class="tier-price" data-idx="${idx}" placeholder="Price" step="0.01" min="0" value="${t.price ?? ''}" />
+        <button type="button" class="row-remove" data-idx="${idx}">&times;</button>
+      `;
+      wrap.appendChild(div);
+    });
+    wrap.querySelectorAll('.tier-min').forEach(el => el.addEventListener('input', (e) => tierRows[+e.target.dataset.idx].min_qty = e.target.value));
+    wrap.querySelectorAll('.tier-max').forEach(el => el.addEventListener('input', (e) => tierRows[+e.target.dataset.idx].max_qty = e.target.value));
+    wrap.querySelectorAll('.tier-price').forEach(el => el.addEventListener('input', (e) => tierRows[+e.target.dataset.idx].price = e.target.value));
+    wrap.querySelectorAll('.row-remove').forEach(el => el.addEventListener('click', (e) => { tierRows.splice(+e.target.dataset.idx, 1); renderTierRows(); }));
+  }
+
+  // ---------------- Save recipe ----------------
+  $('save-recipe-btn').addEventListener('click', async () => {
+    const msg = $('recipe-msg');
+    hideMsg(msg);
+
+    const name = $('r-name').value.trim();
+    if (!name) { showMsg(msg, 'Recipe name is required.', 'error'); return; }
+    const yieldQty = parseFloat($('r-yield-qty').value) || 0;
+    const yieldUnit = $('r-yield-unit').value;
+    const description = $('r-desc').value.trim() || null;
+
+    const btn = $('save-recipe-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    let recipeId = editingRecipeId;
+
+    if (recipeId) {
+      const { error } = await supabase.from('recipes').update({
+        name, description, batch_mode: batchMode, yield_qty: yieldQty, yield_unit: yieldUnit, updated_at: new Date().toISOString(),
+      }).eq('id', recipeId);
+      if (error) { showMsg(msg, 'Could not save: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'Save recipe'; return; }
+      await supabase.from('recipe_ingredients').delete().eq('recipe_id', recipeId);
+      await supabase.from('recipe_equipment').delete().eq('recipe_id', recipeId);
+    } else {
+      const { data: newRecipe, error } = await supabase.from('recipes').insert({
+        business_id: businessId, name, description, batch_mode: batchMode, yield_qty: yieldQty, yield_unit: yieldUnit, is_seed_template: false,
+      }).select().single();
+      if (error) { showMsg(msg, 'Could not save: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'Save recipe'; return; }
+      recipeId = newRecipe.id;
+    }
+
+    const validIngredients = ingredientRows.filter(r => r.ingredient_id && parseFloat(r.quantity) > 0);
+    if (validIngredients.length > 0) {
+      await supabase.from('recipe_ingredients').insert(validIngredients.map(r => ({
+        recipe_id: recipeId, ingredient_id: r.ingredient_id, quantity: parseFloat(r.quantity), unit: r.unit || yieldUnit,
+      })));
+    }
+
+    const validEquipment = equipmentRows.filter(r => r.equipment_id && parseFloat(r.uses_per_batch) > 0);
+    if (validEquipment.length > 0) {
+      await supabase.from('recipe_equipment').insert(validEquipment.map(r => ({
+        recipe_id: recipeId, equipment_id: r.equipment_id, uses_per_batch: parseFloat(r.uses_per_batch),
+      })));
+    }
+
+    // POS linkage
+    const addToPos = $('add-to-pos-toggle').checked;
+    let linkedProduct = allProducts.find(p => p.recipe_id === recipeId);
+
+    if (addToPos) {
+      const useBrackets = $('bracket-pricing-toggle').checked;
+      const flatPrice = useBrackets ? null : (parseFloat($('pos-price').value) || 0);
+
+      if (linkedProduct) {
+        await supabase.from('products').update({ name, price: flatPrice }).eq('id', linkedProduct.id);
+      } else {
+        const { data: newProduct } = await supabase.from('products').insert({
+          business_id: businessId, name, price: flatPrice || 0, recipe_id: recipeId,
+        }).select().single();
+        if (newProduct) {
+          await supabase.from('product_inventory').insert({ business_id: businessId, product_id: newProduct.id, current_stock: 0 });
+          linkedProduct = newProduct;
+        }
+      }
+
+      if (linkedProduct) {
+        await supabase.from('product_price_tiers').delete().eq('product_id', linkedProduct.id);
+        if (useBrackets) {
+          const validTiers = tierRows.filter(t => t.min_qty && t.price);
+          if (validTiers.length > 0) {
+            await supabase.from('product_price_tiers').insert(validTiers.map(t => ({
+              business_id: businessId, product_id: linkedProduct.id,
+              min_qty: parseInt(t.min_qty), max_qty: t.max_qty ? parseInt(t.max_qty) : null, price: parseFloat(t.price),
+            })));
+          }
+        }
+      }
+    } else if (linkedProduct) {
+      // Recipe unlinked from POS — leave the product itself alone, just drop the recipe link.
+      await supabase.from('products').update({ recipe_id: null }).eq('id', linkedProduct.id);
+    }
+
+    btn.disabled = false; btn.textContent = 'Save recipe';
+    closeRecipeEditor();
+    await Promise.all([loadProductsList(), loadRecipes()]);
+  });
+
+  // ---------------- Produce batch ----------------
+  let produceTarget = null;
+
+  function openProduceModal(recipe){
+    produceTarget = recipe;
+    $('produce-modal-title').textContent = `Produce — ${recipe.name}`;
+    const linkedProduct = allProducts.find(p => p.recipe_id === recipe.id);
+    $('produce-modal-sub').textContent = linkedProduct
+      ? `This will deduct materials and add stock to "${linkedProduct.name}" in Product Inventory.`
+      : 'This will deduct materials. No product is linked yet, so no product stock will be added.';
+    $('produce-batches').value = 1;
+    hideMsg($('produce-msg'));
+    updateProducePreview();
+    $('produce-modal-overlay').classList.add('show');
+  }
+  $('produce-modal-close').addEventListener('click', () => $('produce-modal-overlay').classList.remove('show'));
+  $('produce-modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'produce-modal-overlay') $('produce-modal-overlay').classList.remove('show'); });
+  $('produce-batches').addEventListener('input', updateProducePreview);
+
+  function updateProducePreview(){
+    if (!produceTarget) return;
+    const batches = parseFloat($('produce-batches').value) || 0;
+    const ris = recipeIngredientsMap[produceTarget.id] || [];
+    const lines = ris.map((ri) => {
+      const mat = allMaterials.find(m => m.id === ri.ingredient_id);
+      if (!mat) return '';
+      const actualQty = (produceTarget.batch_mode === 'percentage' ? (ri.quantity / 100) * (produceTarget.yield_qty || 0) : ri.quantity) * batches;
+      const short = actualQty > mat.current_stock;
+      return `${mat.name}: ${actualQty.toFixed(3)} ${mat.unit}${short ? ` ⚠ only ${mat.current_stock} in stock` : ''}`;
+    }).filter(Boolean);
+    $('produce-preview').innerHTML = lines.join('<br>');
+  }
+
+  $('produce-confirm-btn').addEventListener('click', async () => {
+    const msg = $('produce-msg');
+    hideMsg(msg);
+    const batches = parseFloat($('produce-batches').value);
+    if (!batches || batches <= 0) { showMsg(msg, 'Enter a valid number of batches.', 'error'); return; }
+
+    const btn = $('produce-confirm-btn');
+    btn.disabled = true; btn.textContent = 'Producing…';
+
+    const linkedProduct = allProducts.find(p => p.recipe_id === produceTarget.id);
+    const { error } = await supabase.rpc('fn_produce_recipe_batch', {
+      p_recipe_id: produceTarget.id, p_batches: batches, p_product_id: linkedProduct ? linkedProduct.id : null,
+    });
+
+    btn.disabled = false; btn.textContent = 'Produce & update stock';
+
+    if (error) { showMsg(msg, 'Could not produce batch: ' + error.message, 'error'); return; }
+
+    $('produce-modal-overlay').classList.remove('show');
+    await Promise.all([loadMaterials(), loadRecipes()]);
+  });
+
+  // ---------------- Equipment tab: CRUD ----------------
+  $('toggle-add-equipment-btn').addEventListener('click', () => openEquipmentEditor(null));
+  $('cancel-equipment-btn').addEventListener('click', () => $('equipment-editor-card').classList.remove('show'));
+
+  function setEqCostMode(mode){
+    eqCostMode = mode;
+    document.querySelectorAll('.eq-cost-mode-btn').forEach(b => b.classList.toggle('selected', b.dataset.mode === mode));
+    $('eq-auto-fields').style.display = mode === 'auto' ? 'block' : 'none';
+    $('eq-manual-field').style.display = mode === 'manual' ? 'block' : 'none';
+  }
+  document.querySelectorAll('.eq-cost-mode-btn').forEach((btn) => btn.addEventListener('click', () => setEqCostMode(btn.dataset.mode)));
+
+  function updateEqComputedCost(){
+    const cost = parseFloat($('eq-purchase-cost').value);
+    const uses = parseFloat($('eq-estimated-uses').value);
+    const display = $('eq-computed-cost-display');
+    display.textContent = (cost > 0 && uses > 0)
+      ? `Cost per use: ${(cost / uses).toFixed(4)} (${cost} ÷ ${uses})`
+      : 'Cost per use will be calculated automatically.';
+  }
+  $('eq-purchase-cost').addEventListener('input', updateEqComputedCost);
+  $('eq-estimated-uses').addEventListener('input', updateEqComputedCost);
+
+  function openEquipmentEditor(eq){
+    editingEquipmentId = eq ? eq.id : null;
+    $('equipment-editor-title').textContent = eq ? `Edit — ${eq.name}` : 'New equipment';
+    hideMsg($('equipment-msg'));
+    $('eq-name').value = eq ? eq.name : '';
+    $('eq-purchase-cost').value = eq ? (eq.purchase_cost || '') : '';
+    $('eq-purchase-date').value = eq ? (eq.purchase_date || '') : '';
+    $('eq-estimated-uses').value = eq ? (eq.estimated_uses || '') : '';
+    $('eq-cost-per-use').value = eq ? (eq.cost_per_use || '') : '';
+    $('eq-notes').value = eq ? (eq.notes || '') : '';
+    setEqCostMode(eq ? 'manual' : 'auto');
+    updateEqComputedCost();
+    $('equipment-editor-card').classList.add('show');
+  }
+
+  $('save-equipment-btn').addEventListener('click', async () => {
+    const msg = $('equipment-msg');
+    hideMsg(msg);
+    const name = $('eq-name').value.trim();
+    if (!name) { showMsg(msg, 'Equipment name is required.', 'error'); return; }
+
+    const purchase_cost = $('eq-purchase-cost').value ? parseFloat($('eq-purchase-cost').value) : null;
+    const purchase_date = $('eq-purchase-date').value || null;
+    const estimated_uses = $('eq-estimated-uses').value ? parseFloat($('eq-estimated-uses').value) : null;
+    const notes = $('eq-notes').value.trim() || null;
+
+    let cost_per_use = 0;
+    if (eqCostMode === 'auto') {
+      if (purchase_cost > 0 && estimated_uses > 0) cost_per_use = purchase_cost / estimated_uses;
+    } else {
+      cost_per_use = $('eq-cost-per-use').value ? parseFloat($('eq-cost-per-use').value) : 0;
+    }
+
+    const btn = $('save-equipment-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    const payload = { name, purchase_cost, purchase_date, estimated_uses, cost_per_use, notes };
+    let error;
+    if (editingEquipmentId) {
+      ({ error } = await supabase.from('equipment').update(payload).eq('id', editingEquipmentId));
+    } else {
+      ({ error } = await supabase.from('equipment').insert({ business_id: businessId, ...payload }));
+    }
+
+    btn.disabled = false; btn.textContent = editingEquipmentId ? 'Save changes' : 'Add equipment';
+
+    if (error) { showMsg(msg, 'Could not save: ' + error.message, 'error'); return; }
+
+    $('equipment-editor-card').classList.remove('show');
+    await loadEquipmentList();
+    renderIngredientRows(); // in case an equipment cost changed while a recipe is open — refresh summary too
+    updateSummary();
+  });
+
+  async function deleteEquipment(eq){
+    const ok = confirm(`Delete "${eq.name}"? This cannot be undone.`);
+    if (!ok) return;
+    const { error } = await supabase.from('equipment').delete().eq('id', eq.id);
+    if (error) {
+      if (error.message && error.message.toLowerCase().includes('foreign key')) {
+        alert(`Can't delete "${eq.name}" — it's used in one or more recipes. Remove it from those recipes first.`);
+      } else {
+        alert('Could not delete: ' + error.message);
+      }
+      return;
+    }
+    await loadEquipmentList();
+  }
+
+  function renderEquipmentTable(){
+    const tbody = $('equipment-tbody');
+    tbody.innerHTML = '';
+    if (allEquipment.length === 0) {
+      $('equipment-empty').style.display = 'block';
+      return;
+    }
+    $('equipment-empty').style.display = 'none';
+    allEquipment.forEach((eq) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${eq.name}</td>
+        <td>${eq.purchase_cost != null ? peso(eq.purchase_cost) : '—'}</td>
+        <td>${eq.estimated_uses ?? '—'}</td>
+        <td>${peso(eq.cost_per_use)}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-sm btn-ghost edit-eq-btn">Edit</button>
+          <button class="btn btn-sm btn-ghost delete-eq-btn" style="color:var(--error);">Delete</button>
+        </td>
+      `;
+      tr.querySelector('.edit-eq-btn').addEventListener('click', () => openEquipmentEditor(eq));
+      tr.querySelector('.delete-eq-btn').addEventListener('click', () => deleteEquipment(eq));
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------------- Init ----------------
+  async function init(){
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { window.location.href = 'login.html'; return; }
+
+    const { data: business, error } = await supabase
+      .from('businesses')
+      .select('id, business_name, status, theme_color, theme_mode, logo_url')
+      .eq('owner_auth_user_id', session.user.id)
+      .single();
+
+    if (error || !business || business.status !== 'active') {
+      await signOutAndRedirect();
+      return;
+    }
+
+    businessId = business.id;
+    applyTheme(business.theme_color, business.theme_mode);
+    $('sidebar-biz-name').textContent = business.business_name;
+    $('who-email').textContent = session.user.email;
+    updateSidebarLogo(business.logo_url);
+
+    await Promise.all([loadMaterials(), loadEquipmentList(), loadProductsList()]);
+    await loadRecipes();
+
+    $('splash').style.display = 'none';
+    $('shell').classList.add('show');
+  }
+
+  $('sign-out').addEventListener('click', signOutAndRedirect);
+  $('sign-out-mobile').addEventListener('click', signOutAndRedirect);
+
+  init();
+</script>
+</body>
+</html>
