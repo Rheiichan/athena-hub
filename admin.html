@@ -119,6 +119,7 @@
       <div class="tab active" data-tab="pending">Pending Activation</div>
       <div class="tab" data-tab="all">All Businesses</div>
       <div class="tab" data-tab="resets">Password Resets</div>
+      <div class="tab" data-tab="perpetual">Perpetual Codes</div>
     </div>
 
     <!-- PENDING -->
@@ -160,6 +161,40 @@
           <tr><th>Business</th><th>Email</th><th>Requested</th><th></th></tr>
         </thead><tbody></tbody></table>
         <div class="empty" id="empty-resets" style="display:none;">No pending password reset requests.</div>
+      </div>
+    </div>
+
+    <!-- PERPETUAL CODES -->
+    <div class="panel-view" id="view-perpetual">
+      <div class="section-head">
+        <h2>Perpetual plan codes</h2>
+        <button class="refresh" data-refresh="perpetual">Refresh</button>
+      </div>
+
+      <div class="card" style="padding:18px 20px;margin-bottom:20px;">
+        <p style="margin:0 0 14px;font-size:13px;color:var(--muted);">
+          Register the email + code exactly as assigned in the Soaphrodite Lab admin,
+          so the customer can redeem it on Athena's signup page.
+        </p>
+        <div id="perpetual-msg" class="msg"></div>
+        <form id="perpetual-form" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+          <div class="field" style="flex:1;min-width:220px;margin-bottom:0;">
+            <label for="perpetual-email">Customer email</label>
+            <input type="email" id="perpetual-email" required />
+          </div>
+          <div class="field" style="flex:1;min-width:180px;margin-bottom:0;">
+            <label for="perpetual-code">Code (from Lab admin)</label>
+            <input type="text" id="perpetual-code" required placeholder="e.g. SPH-11F9U-JQMPW" style="text-transform:uppercase;" />
+          </div>
+          <button type="submit" class="btn" id="perpetual-submit">Add code</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <table id="table-perpetual"><thead>
+          <tr><th>Email</th><th>Code</th><th>Status</th><th>Added</th><th>Used</th></tr>
+        </thead><tbody></tbody></table>
+        <div class="empty" id="empty-perpetual" style="display:none;">No perpetual codes registered yet.</div>
       </div>
     </div>
   </main>
@@ -232,6 +267,7 @@
       if (name === 'pending') loadPending();
       if (name === 'all') loadAll();
       if (name === 'resets') loadResets();
+      if (name === 'perpetual') loadPerpetual();
     });
   });
   document.querySelectorAll('[data-refresh]').forEach((btn) => {
@@ -240,6 +276,7 @@
       if (name === 'pending') loadPending();
       if (name === 'all') loadAll();
       if (name === 'resets') loadResets();
+      if (name === 'perpetual') loadPerpetual();
     });
   });
 
@@ -342,6 +379,60 @@
         }
         loadResets();
       });
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------------- Perpetual codes ----------------
+  $('perpetual-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('perpetual-msg');
+    hideMsg(msg);
+    const btn = $('perpetual-submit');
+    btn.disabled = true; btn.textContent = 'Adding…';
+
+    const email = $('perpetual-email').value.trim();
+    const code = $('perpetual-code').value.trim().toUpperCase();
+
+    const { error } = await supabase.rpc('fn_admin_add_perpetual_code', {
+      p_email: email,
+      p_code: code,
+    });
+
+    btn.disabled = false; btn.textContent = 'Add code';
+
+    if (error) {
+      showMsg(msg, 'Could not add that code: ' + error.message, 'error');
+      return;
+    }
+
+    showMsg(msg, `Code ${code} registered to ${email}.`, 'success');
+    $('perpetual-form').reset();
+    loadPerpetual();
+  });
+
+  async function loadPerpetual(){
+    const tbody = document.querySelector('#table-perpetual tbody');
+    tbody.innerHTML = '';
+    const { data, error } = await supabase.rpc('fn_admin_list_perpetual_codes');
+
+    if (error || !data || data.length === 0) {
+      $('empty-perpetual').style.display = 'block';
+      return;
+    }
+    $('empty-perpetual').style.display = 'none';
+
+    data.forEach((c) => {
+      const tr = document.createElement('tr');
+      const badgeClass = c.is_used ? 'active' : 'pending';
+      const badgeLabel = c.is_used ? 'redeemed' : 'unredeemed';
+      tr.innerHTML = `
+        <td>${c.assigned_email || '—'}</td>
+        <td>${c.code}</td>
+        <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
+        <td>${fmtDate(c.issued_at)}</td>
+        <td>${fmtDate(c.used_at)}</td>
+      `;
       tbody.appendChild(tr);
     });
   }

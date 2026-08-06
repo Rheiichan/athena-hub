@@ -222,7 +222,7 @@
 
   // ---- Configure for this project ----------------------------------
   const SUPABASE_URL = 'https://nitbsqhvjhdappgsghci.supabase.co';
-  const SUPABASE_ANON_KEY = 'PASTE_YOUR_ANON_KEY_HERE';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pdGJzcWh2amhkYXBwZ3NnaGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzgxNDksImV4cCI6MjEwMTUxNDE0OX0.r0wKMkslE1dOJIpy62bzDzfoEUvw73AA5A9GeMcnhnI';
   // --------------------------------------------------------------------
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -294,7 +294,7 @@
     btn.disabled = true; btn.textContent = 'Checking code…';
 
     // 1. Validate the code before creating any auth account.
-    const { data: codeValid, error: codeError } = await supabase.rpc('fn_check_code_valid', { p_code: code });
+    const { data: codeValid, error: codeError } = await supabase.rpc('fn_check_code_valid', { p_code: code, p_email: email });
 
     if (codeError || !codeValid) {
       showMsg(msg, 'That business plan code is invalid or has already been used. Double-check it or contact info@soaphroditeph.com.', 'error');
