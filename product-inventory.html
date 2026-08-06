@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Athena — Product Inventory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --accent:#7C4DB8; --accent-dark:#583A82; --accent-soft:#F1ECFA; --accent-ink:#3B2260;
+    --ink:#211B2B; --muted:#6E6779; --line:#E7E3EE; --card:#FFFFFF; --bg:#FAFAFC;
+    --sidebar-bg:#211B2B; --sidebar-ink:#F3EEFA; --sidebar-muted:#B9AFC9;
+    --success:#2F7A54; --success-bg:#EAF6EF; --error:#B3392B; --error-bg:#FBEAE7;
+    --warn:#9A6B12; --warn-bg:#FBF3E0;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',system-ui,sans-serif;color:var(--ink);background:var(--bg);}
+  a{color:inherit;text-decoration:none;}
+
+  .splash{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--sidebar-bg);color:var(--sidebar-ink);}
+  .splash .mark{font-family:'Fraunces',serif;font-weight:500;font-size:32px;opacity:.85;}
+
+  .shell{display:none;min-height:100vh;grid-template-columns:250px 1fr;}
+  .shell.show{display:grid;}
+  @media (max-width:900px){ .shell.show{grid-template-columns:1fr;} }
+
+  .sidebar{background:var(--sidebar-bg);color:var(--sidebar-ink);padding:26px 20px;display:flex;flex-direction:column;}
+  @media (max-width:900px){ .sidebar{display:none;} }
+
+  .biz-name{font-family:'Fraunces',serif;font-weight:600;font-size:19px;color:var(--sidebar-ink);margin:2px 0 26px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.12);line-height:1.25;text-align:center;}
+  .sidebar-logo{width:56px;height:56px;border-radius:12px;object-fit:cover;margin:0 auto 10px;display:none;}
+  .sidebar-logo.show{display:block;}
+  .powered-by{font-size:10.5px;color:var(--accent);text-align:center;margin:16px 0 0;line-height:1.4;}
+
+  nav.modules{flex:1;display:flex;flex-direction:column;gap:2px;}
+  .nav-section-label{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--sidebar-muted);margin:16px 0 6px;padding:0 10px;}
+  .nav-section-label:first-child{margin-top:0;}
+  .nav-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:8px;font-size:14px;color:var(--sidebar-ink);cursor:pointer;}
+  .nav-item:hover{background:rgba(255,255,255,.08);}
+  .nav-item.active{background:rgba(255,255,255,.18);}
+  .nav-item .soon{font-size:10px;color:var(--sidebar-muted);border:1px solid rgba(255,255,255,.2);padding:1px 6px;border-radius:99px;}
+  .nav-item-main{display:flex;align-items:center;gap:10px;}
+  .nav-icon{width:17px;height:17px;flex-shrink:0;opacity:.9;}
+
+  .sidebar-foot{padding-top:16px;border-top:1px solid rgba(255,255,255,.12);}
+  .who{font-size:12.5px;color:var(--sidebar-muted);margin-bottom:10px;word-break:break-all;}
+  .signout-btn{width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--sidebar-ink);font-size:13px;cursor:pointer;font-family:inherit;}
+  .signout-btn:hover{background:rgba(255,255,255,.08);}
+
+  .mobile-bar{display:none;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--sidebar-bg);color:var(--sidebar-ink);}
+  @media (max-width:900px){ .mobile-bar{display:flex;} }
+  .mobile-bar .name{font-family:'Fraunces',serif;font-weight:600;font-size:18px;}
+
+  main{padding:36px 40px 60px;}
+  @media (max-width:900px){ main{padding:24px 20px 48px;} }
+
+  .page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px;flex-wrap:wrap;}
+  .page-head h1{font-family:'Fraunces',serif;font-weight:600;font-size:26px;margin:0 0 6px;color:var(--accent-ink);}
+  .page-head p{color:var(--muted);font-size:14.5px;margin:0;}
+
+  .btn{padding:11px 20px;border:none;border-radius:8px;background:var(--accent);color:var(--accent-ink);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .btn:hover{background:var(--accent-dark);}
+  .btn:disabled{opacity:.55;cursor:not-allowed;}
+  .btn-sm{padding:6px 12px;font-size:12.5px;border-radius:6px;}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink);}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent-dark);}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:20px;}
+  .card-pad{padding:20px 22px;}
+
+  label{display:block;font-size:12.5px;font-weight:600;margin:0 0 6px;}
+  .field{margin-bottom:14px;}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media (max-width:560px){ .field-row{grid-template-columns:1fr;} }
+  input[type=text],input[type=number],select,textarea{
+    width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;
+    font-size:14px;font-family:inherit;color:var(--ink);background:var(--bg);
+  }
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,77,184,.15);}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:left;padding:10px 14px;background:var(--accent-soft);color:var(--accent-ink);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;}
+  td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  .empty-state{padding:40px;text-align:center;color:var(--muted);font-size:14px;}
+
+  .stock-badge{font-weight:700;}
+  .stock-low{color:var(--warn);}
+  .stock-zero{color:var(--error);}
+
+  .add-form{display:none;}
+  .add-form.show{display:block;}
+
+  .msg{border-radius:8px;padding:10px 13px;font-size:13px;line-height:1.5;margin:0 0 14px;display:none;}
+  .msg.show{display:block;}
+  .msg.error{background:var(--error-bg);color:var(--error);}
+  .msg.success{background:var(--success-bg);color:var(--success);}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(20,15,25,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:var(--card);border-radius:12px;padding:24px;max-width:400px;width:100%;max-height:80vh;overflow-y:auto;}
+  .modal h3{font-family:'Fraunces',serif;font-weight:600;font-size:18px;margin:0 0 4px;}
+  .modal .sub{color:var(--muted);font-size:13px;margin:0 0 18px;}
+  .modal-close{float:right;background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1;}
+
+  .history-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;}
+  .history-row:last-child{border-bottom:none;}
+  .history-qty{font-weight:700;}
+  .history-qty.pos{color:var(--success);}
+  .history-qty.neg{color:var(--error);}
+  .history-meta{color:var(--muted);font-size:11.5px;}
+
+  .qty-buttons{display:flex;gap:8px;margin-bottom:14px;}
+  .qty-buttons button{flex:1;padding:9px;border-radius:8px;border:1px solid var(--line);background:var(--bg);font-family:inherit;font-weight:600;cursor:pointer;}
+  .qty-buttons button.selected{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink);}
+</style>
+</head>
+<body>
+
+<div class="splash" id="splash"><div class="mark">Athena</div></div>
+
+<div class="shell" id="shell">
+  <aside class="sidebar">
+    <img class="sidebar-logo" id="sidebar-logo" alt="" />
+    <p class="biz-name" id="sidebar-biz-name">—</p>
+
+    <nav class="modules">
+      <a class="nav-item" href="hub.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Dashboard</span>
+      </a>
+
+      <p class="nav-section-label">Sell &amp; Make</p>
+      <a class="nav-item" href="pos.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 12.4a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 2-1.6L21 8H6"/><circle cx="9" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/></svg>POS</span>
+        <span class="soon">Soon</span>
+      </a>
+      <a class="nav-item" href="recipes.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v6l-5.5 9.5A1.8 1.8 0 0 0 6.1 21h11.8a1.8 1.8 0 0 0 1.6-2.5L14 9V3"/><path d="M7.5 15h9"/></svg>Recipe Calculator</span>
+        <span class="soon">Soon</span>
+      </a>
+
+      <p class="nav-section-label">Stock</p>
+      <div class="nav-item active">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-5 9 5-9 5-9-5Z"/><path d="M3 8v9l9 5 9-5V8"/><path d="M12 13v9"/></svg>Product Inventory</span>
+      </div>
+      <a class="nav-item" href="materials-inventory.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M9.5 3v3.3L6.8 9.4A3 3 0 0 0 6 11.4V19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-7.6a3 3 0 0 0-.8-2L14.5 6.3V3"/></svg>Materials Inventory</span>
+      </a>
+      <a class="nav-item" href="procurement.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h10v9H3z"/><path d="M13 10h4l4 3.5V16h-8"/><circle cx="7" cy="18.5" r="1.6"/><circle cx="17.5" cy="18.5" r="1.6"/></svg>Procurement</span>
+        <span class="soon">Soon</span>
+      </a>
+
+      <p class="nav-section-label">Operate</p>
+      <a class="nav-item" href="scheduler.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9.5h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg>Scheduler</span>
+        <span class="soon">Soon</span>
+      </a>
+      <a class="nav-item" href="orders.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3.2h6a1 1 0 0 1 1 1V5.5H8V4.2a1 1 0 0 1 1-1Z"/><path d="M9 13l2 2 4-4.5"/></svg>Order Release Tracker</span>
+        <span class="soon">Soon</span>
+      </a>
+      <a class="nav-item" href="finances.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V11"/><path d="M10 20V4"/><path d="M16 20v-6.5"/><path d="M2 20h20"/></svg>Finances</span>
+        <span class="soon">Soon</span>
+      </a>
+      <a class="nav-item" href="employees.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><circle cx="17.5" cy="9" r="2.3"/><path d="M15 20a4.5 4.5 0 0 1 6.5-4"/></svg>Employees</span>
+        <span class="soon">Soon</span>
+      </a>
+
+      <p class="nav-section-label">Setup</p>
+      <a class="nav-item" href="settings.html">
+        <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.7 7.7 0 0 0 0-2l2-1.5-2-3.4-2.3.9a7.6 7.6 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.6 7.6 0 0 0-1.7 1l-2.3-.9-2 3.4L6.6 11a7.7 7.7 0 0 0 0 2l-2 1.5 2 3.4 2.3-.9a7.6 7.6 0 0 0 1.7 1L11 20.5h4l.4-2.5a7.6 7.6 0 0 0 1.7-1l2.3.9 2-3.4-2-1.5Z"/></svg>Business Settings</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <p class="who" id="who-email"></p>
+      <button class="signout-btn" id="sign-out">Sign out</button>
+      <p class="powered-by">Athena Business Hub by Soaphrodite Labs</p>
+    </div>
+  </aside>
+
+  <div>
+    <div class="mobile-bar">
+      <span class="name">Athena</span>
+      <button class="signout-btn" id="sign-out-mobile" style="width:auto;">Sign out</button>
+    </div>
+
+    <main>
+      <div class="page-head">
+        <div>
+          <h1>Product Inventory</h1>
+          <p>Your finished-product catalog and current stock.</p>
+        </div>
+        <button class="btn" id="toggle-add-btn">+ Add Product</button>
+      </div>
+
+      <div class="card add-form" id="add-form-card">
+        <div class="card-pad">
+          <h3 style="font-family:'Fraunces',serif;font-weight:600;font-size:16px;margin:0 0 14px;">New product</h3>
+          <div id="add-msg" class="msg"></div>
+          <form id="add-product-form">
+            <div class="field-row">
+              <div class="field">
+                <label for="p-name">Product name</label>
+                <input type="text" id="p-name" required />
+              </div>
+              <div class="field">
+                <label for="p-sku">SKU</label>
+                <input type="text" id="p-sku" />
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="p-category">Category</label>
+                <input type="text" id="p-category" />
+              </div>
+              <div class="field">
+                <label for="p-price">Price</label>
+                <input type="number" id="p-price" step="0.01" min="0" />
+              </div>
+            </div>
+            <button type="submit" class="btn" id="add-submit">Add product</button>
+            <button type="button" class="btn btn-ghost" id="cancel-add" style="margin-left:8px;">Cancel</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead>
+            <tr><th>Product</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th><th></th></tr>
+          </thead>
+          <tbody id="product-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="empty-state" style="display:none;">No products yet — add your first one above.</div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ADD STOCK MODAL -->
+<div class="modal-overlay" id="stock-modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="stock-modal-close">&times;</button>
+    <h3 id="stock-modal-title">Adjust stock</h3>
+    <p class="sub" id="stock-modal-sub"></p>
+    <div id="stock-msg" class="msg"></div>
+    <form id="stock-form">
+      <div class="qty-buttons">
+        <button type="button" class="qty-dir selected" data-dir="1">+ Add stock</button>
+        <button type="button" class="qty-dir" data-dir="-1">− Remove stock</button>
+      </div>
+      <div class="field">
+        <label for="stock-qty">Quantity</label>
+        <input type="number" id="stock-qty" min="0" step="1" required />
+      </div>
+      <div class="field">
+        <label for="stock-note">Note (optional)</label>
+        <textarea id="stock-note" rows="2"></textarea>
+      </div>
+      <button type="submit" class="btn" id="stock-submit" style="width:100%;">Save</button>
+    </form>
+  </div>
+</div>
+
+<!-- HISTORY MODAL -->
+<div class="modal-overlay" id="history-modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="history-modal-close">&times;</button>
+    <h3 id="history-modal-title">Stock history</h3>
+    <p class="sub">Most recent 50 changes.</p>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  const SUPABASE_URL = 'https://nitbsqhvjhdappgsghci.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pdGJzcWh2amhkYXBwZ3NnaGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzgxNDksImV4cCI6MjEwMTUxNDE0OX0.r0wKMkslE1dOJIpy62bzDzfoEUvw73AA5A9GeMcnhnI';
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const $ = (id) => document.getElementById(id);
+
+  const THEME_PALETTES = {
+    violet: { panel: '#5B3789', accent: '#B79AE0', accentDark: '#9E7BC9', accentSoft: '#F1ECFA', accentInk: '#3B2260' },
+    orange: { panel: '#8C4419', accent: '#F0B27A', accentDark: '#D89355', accentSoft: '#FBEEE2', accentInk: '#5C2C0E' },
+    red:    { panel: '#7A2A20', accent: '#F0A69C', accentDark: '#D98579', accentSoft: '#FBEAE7', accentInk: '#5C1F17' },
+    yellow: { panel: '#7A5A0C', accent: '#F0D27A', accentDark: '#D9B655', accentSoft: '#FBF3DD', accentInk: '#4A3706' },
+    green:  { panel: '#1F5A3B', accent: '#A8D9BE', accentDark: '#7FBE9C', accentSoft: '#E7F4ED', accentInk: '#0F3320' },
+    pink:   { panel: '#8C2F5C', accent: '#F0AECD', accentDark: '#D98CAF', accentSoft: '#FBEAF2', accentInk: '#5C1D3B' },
+  };
+
+  function applyTheme(color, mode){
+    const palette = THEME_PALETTES[color] || THEME_PALETTES.violet;
+    const root = document.documentElement.style;
+    root.setProperty('--accent', palette.accent);
+    root.setProperty('--accent-dark', palette.accentDark);
+    root.setProperty('--accent-soft', palette.accentSoft);
+    root.setProperty('--accent-ink', palette.accentInk);
+    root.setProperty('--sidebar-bg', palette.panel);
+    if (mode === 'dark') {
+      root.setProperty('--bg', '#17151B'); root.setProperty('--card', '#211E27');
+      root.setProperty('--ink', '#F3EEFA'); root.setProperty('--muted', '#A79FB3'); root.setProperty('--line', '#37333F');
+    } else {
+      root.setProperty('--bg', '#FAFAFC'); root.setProperty('--card', '#FFFFFF');
+      root.setProperty('--ink', '#211B2B'); root.setProperty('--muted', '#6E6779'); root.setProperty('--line', '#E7E3EE');
+    }
+  }
+
+  function updateSidebarLogo(url){
+    const img = $('sidebar-logo');
+    if (url) { img.src = url; img.classList.add('show'); }
+    else { img.classList.remove('show'); img.removeAttribute('src'); }
+  }
+
+  function showMsg(el, text, type){ el.textContent = text; el.className = 'msg show ' + type; }
+  function hideMsg(el){ el.className = 'msg'; }
+  function fmtDate(iso){ return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }); }
+
+  async function signOutAndRedirect(){
+    await supabase.auth.signOut();
+    window.location.href = 'login.html';
+  }
+
+  let products = [];
+
+  async function loadProducts(){
+    const { data, error } = await supabase.rpc('fn_list_products_with_stock');
+    const tbody = $('product-tbody');
+    tbody.innerHTML = '';
+
+    if (error || !data || data.length === 0) {
+      $('empty-state').style.display = 'block';
+      products = [];
+      return;
+    }
+    $('empty-state').style.display = 'none';
+    products = data;
+
+    data.forEach((p) => {
+      const stockClass = p.current_stock <= 0 ? 'stock-zero' : (p.reorder_level && p.current_stock <= p.reorder_level ? 'stock-low' : '');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${p.name}</td>
+        <td>${p.sku || '—'}</td>
+        <td>${p.category || '—'}</td>
+        <td>${p.price != null ? '₱' + Number(p.price).toFixed(2) : '—'}</td>
+        <td><span class="stock-badge ${stockClass}">${p.current_stock}</span></td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-sm btn-ghost stock-btn">Adjust</button>
+          <button class="btn btn-sm btn-ghost history-btn">History</button>
+        </td>
+      `;
+      tr.querySelector('.stock-btn').addEventListener('click', () => openStockModal(p));
+      tr.querySelector('.history-btn').addEventListener('click', () => openHistoryModal(p));
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------------- Add product ----------------
+  $('toggle-add-btn').addEventListener('click', () => {
+    $('add-form-card').classList.toggle('show');
+  });
+  $('cancel-add').addEventListener('click', () => {
+    $('add-form-card').classList.remove('show');
+    $('add-product-form').reset();
+  });
+
+  let businessId = null;
+
+  $('add-product-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('add-msg');
+    hideMsg(msg);
+    const btn = $('add-submit');
+    btn.disabled = true; btn.textContent = 'Adding…';
+
+    const name = $('p-name').value.trim();
+    const sku = $('p-sku').value.trim() || null;
+    const category = $('p-category').value.trim() || null;
+    const price = $('p-price').value ? parseFloat($('p-price').value) : 0;
+
+    const { data: newProduct, error } = await supabase
+      .from('products')
+      .insert({ business_id: businessId, name, sku, category, price })
+      .select()
+      .single();
+
+    btn.disabled = false; btn.textContent = 'Add product';
+
+    if (error) {
+      showMsg(msg, 'Could not add product: ' + error.message, 'error');
+      return;
+    }
+
+    await supabase.from('product_inventory').insert({
+      business_id: businessId, product_id: newProduct.id, current_stock: 0,
+    });
+
+    $('add-product-form').reset();
+    $('add-form-card').classList.remove('show');
+    loadProducts();
+  });
+
+  // ---------------- Adjust stock modal ----------------
+  let activeProduct = null;
+  let stockDir = 1;
+
+  function openStockModal(p){
+    activeProduct = p;
+    $('stock-modal-title').textContent = `Adjust stock — ${p.name}`;
+    $('stock-modal-sub').textContent = `Current stock: ${p.current_stock}`;
+    $('stock-qty').value = '';
+    $('stock-note').value = '';
+    hideMsg($('stock-msg'));
+    stockDir = 1;
+    document.querySelectorAll('.qty-dir').forEach(b => b.classList.toggle('selected', b.dataset.dir === '1'));
+    $('stock-modal-overlay').classList.add('show');
+  }
+  $('stock-modal-close').addEventListener('click', () => $('stock-modal-overlay').classList.remove('show'));
+  $('stock-modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'stock-modal-overlay') $('stock-modal-overlay').classList.remove('show'); });
+
+  document.querySelectorAll('.qty-dir').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      stockDir = parseInt(btn.dataset.dir);
+      document.querySelectorAll('.qty-dir').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+  });
+
+  $('stock-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('stock-msg');
+    hideMsg(msg);
+    const btn = $('stock-submit');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    const qty = parseFloat($('stock-qty').value) * stockDir;
+    const note = $('stock-note').value.trim() || null;
+
+    const { error } = await supabase.rpc('fn_adjust_product_stock', {
+      p_product_id: activeProduct.id, p_change_qty: qty, p_reason: 'manual', p_note: note,
+    });
+
+    btn.disabled = false; btn.textContent = 'Save';
+
+    if (error) {
+      showMsg(msg, 'Could not update stock: ' + error.message, 'error');
+      return;
+    }
+
+    $('stock-modal-overlay').classList.remove('show');
+    loadProducts();
+  });
+
+  // ---------------- History modal ----------------
+  async function openHistoryModal(p){
+    $('history-modal-title').textContent = `Stock history — ${p.name}`;
+    $('history-list').innerHTML = '<p style="color:var(--muted);font-size:13px;">Loading…</p>';
+    $('history-modal-overlay').classList.add('show');
+
+    const { data, error } = await supabase.rpc('fn_get_product_stock_history', { p_product_id: p.id });
+
+    if (error || !data || data.length === 0) {
+      $('history-list').innerHTML = '<p style="color:var(--muted);font-size:13px;">No stock changes yet.</p>';
+      return;
+    }
+
+    $('history-list').innerHTML = data.map((h) => `
+      <div class="history-row">
+        <div>
+          <div>${h.note || (h.reason === 'manual' ? 'Manual adjustment' : h.reason)}</div>
+          <div class="history-meta">${fmtDate(h.created_at)}</div>
+        </div>
+        <div class="history-qty ${h.change_qty >= 0 ? 'pos' : 'neg'}">${h.change_qty >= 0 ? '+' : ''}${h.change_qty}</div>
+      </div>
+    `).join('');
+  }
+  $('history-modal-close').addEventListener('click', () => $('history-modal-overlay').classList.remove('show'));
+  $('history-modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'history-modal-overlay') $('history-modal-overlay').classList.remove('show'); });
+
+  // ---------------- Init ----------------
+  async function init(){
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { window.location.href = 'login.html'; return; }
+
+    const { data: business, error } = await supabase
+      .from('businesses')
+      .select('id, business_name, status, theme_color, theme_mode, logo_url')
+      .eq('owner_auth_user_id', session.user.id)
+      .single();
+
+    if (error || !business || business.status !== 'active') {
+      await signOutAndRedirect();
+      return;
+    }
+
+    businessId = business.id;
+    applyTheme(business.theme_color, business.theme_mode);
+    $('sidebar-biz-name').textContent = business.business_name;
+    $('who-email').textContent = session.user.email;
+    updateSidebarLogo(business.logo_url);
+
+    await loadProducts();
+
+    $('splash').style.display = 'none';
+    $('shell').classList.add('show');
+  }
+
+  $('sign-out').addEventListener('click', signOutAndRedirect);
+  $('sign-out-mobile').addEventListener('click', signOutAndRedirect);
+
+  init();
+</script>
+</body>
+</html>
