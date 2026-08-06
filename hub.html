@@ -35,10 +35,10 @@
   .brand{margin-bottom:6px;}
   .brand .eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--sidebar-muted);margin:0 0 4px;}
   .brand .name{font-family:'Fraunces',serif;font-weight:600;font-size:24px;margin:0;}
-  .biz-name{font-family:'Fraunces',serif;font-weight:600;font-size:19px;color:var(--sidebar-ink);margin:2px 0 26px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.12);line-height:1.25;}
-  .sidebar-logo{width:56px;height:56px;border-radius:12px;object-fit:cover;margin-bottom:10px;display:none;}
+  .biz-name{font-family:'Fraunces',serif;font-weight:600;font-size:19px;color:var(--sidebar-ink);margin:2px 0 26px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.12);line-height:1.25;text-align:center;}
+  .sidebar-logo{width:56px;height:56px;border-radius:12px;object-fit:cover;margin:0 auto 10px;display:none;}
   .sidebar-logo.show{display:block;}
-  .powered-by{font-size:10.5px;color:var(--sidebar-muted);margin:0 0 20px;line-height:1.4;}
+  .powered-by{font-size:10.5px;color:var(--accent);text-align:center;margin:16px 0 0;line-height:1.4;}
 
   nav.modules{flex:1;display:flex;flex-direction:column;gap:2px;}
   .nav-section-label{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--sidebar-muted);margin:16px 0 6px;padding:0 10px;}
@@ -103,7 +103,6 @@
 <div class="shell" id="shell">
   <aside class="sidebar">
     <img class="sidebar-logo" id="sidebar-logo" alt="" />
-    <p class="powered-by">Athena Business Hub by Soaphrodite Labs</p>
     <p class="biz-name" id="sidebar-biz-name">—</p>
 
     <nav class="modules" id="nav-modules">
@@ -162,6 +161,7 @@
     <div class="sidebar-foot">
       <p class="who" id="who-email"></p>
       <button class="signout-btn" id="sign-out">Sign out</button>
+      <p class="powered-by">Athena Business Hub by Soaphrodite Labs</p>
     </div>
   </aside>
 
