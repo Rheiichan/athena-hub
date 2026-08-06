@@ -316,6 +316,7 @@
               <div class="field">
                 <label for="pos-price">Price</label>
                 <input type="number" id="pos-price" step="0.01" min="0" />
+                <p class="hint" id="markup-display" style="margin:6px 0 0;font-size:12.5px;"></p>
               </div>
               <div class="toggle-row" style="margin-top:0;">
                 <label class="switch"><input type="checkbox" id="bracket-pricing-toggle" /><span class="switch-track"></span></label>
@@ -853,13 +854,42 @@
 
     const total = materialsCost + equipmentCost;
     const perUnit = yieldQty > 0 ? total / yieldQty : 0;
+    lastPerUnitCost = perUnit;
 
     $('sum-materials').textContent = peso(materialsCost);
     $('sum-equipment').textContent = peso(equipmentCost);
     $('sum-total').textContent = peso(total);
     $('sum-unit-label').textContent = yieldUnit || 'unit';
     $('sum-per-unit').textContent = peso(perUnit);
+    updateMarkupDisplay();
   }
+
+  let lastPerUnitCost = 0;
+
+  function updateMarkupDisplay(){
+    const el = $('markup-display');
+    const price = parseFloat($('pos-price').value);
+    const cost = lastPerUnitCost;
+
+    if (!price || price <= 0 || !cost || cost <= 0) {
+      el.textContent = '';
+      return;
+    }
+
+    const markupPct = ((price - cost) / cost) * 100;
+    const marginPct = ((price - cost) / price) * 100;
+
+    let label, color;
+    if (markupPct < 0) { label = 'Loss — price is below cost'; color = 'var(--error)'; }
+    else if (markupPct < 20) { label = 'Low'; color = 'var(--warn, #9A6B12)'; }
+    else if (markupPct < 50) { label = 'Fair'; color = 'var(--warn, #9A6B12)'; }
+    else if (markupPct < 100) { label = 'Good'; color = 'var(--success)'; }
+    else { label = 'Healthy'; color = 'var(--success)'; }
+
+    el.innerHTML = `Markup: <strong>${markupPct.toFixed(0)}%</strong> · Margin: ${marginPct.toFixed(0)}% — <span style="color:${color};font-weight:700;">${label}</span> <span style="color:var(--muted);">(cost ${peso(cost)}/unit)</span>`;
+  }
+
+  $('pos-price').addEventListener('input', updateMarkupDisplay);
 
   // ---------------- POS / pricing toggles ----------------
   $('add-to-pos-toggle').addEventListener('change', (e) => {
