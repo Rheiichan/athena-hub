@@ -146,7 +146,7 @@
       </div>
       <div class="card">
         <table id="table-all"><thead>
-          <tr><th>Business</th><th>Email</th><th>Status</th><th>Signed up</th><th>Activated</th></tr>
+          <tr><th>Business</th><th>Email</th><th>Status</th><th>Signed up</th><th>Activated</th><th></th></tr>
         </thead><tbody></tbody></table>
         <div class="empty" id="empty-all" style="display:none;">No businesses yet.</div>
       </div>
@@ -158,6 +158,23 @@
         <h2>Password reset requests</h2>
         <button class="refresh" data-refresh="resets">Refresh</button>
       </div>
+
+      <div class="card" style="padding:18px 20px;margin-bottom:20px;">
+        <p style="margin:0 0 14px;font-size:13px;color:var(--muted);">
+          Send a reset link directly to any registered email — for cases where the
+          customer couldn't verify their security questions, or reached out without
+          using "Forgot password" at all. No listed request needed.
+        </p>
+        <div id="override-msg" class="msg"></div>
+        <form id="override-form" style="display:flex;gap:10px;align-items:flex-end;">
+          <div class="field" style="flex:1;margin-bottom:0;">
+            <label for="override-email">Customer email</label>
+            <input type="email" id="override-email" required />
+          </div>
+          <button type="submit" class="btn" id="override-submit" style="width:auto;padding:11px 22px;">Send Reset Link</button>
+        </form>
+      </div>
+
       <div class="card">
         <table id="table-resets"><thead>
           <tr><th>Business</th><th>Email</th><th>Requested</th><th></th></tr>
@@ -187,7 +204,7 @@
             </div>
             <div class="field">
               <label for="perpetual-code">Code (from Lab admin)</label>
-              <input type="text" id="perpetual-code" required placeholder="SPH-11F9U-JQMPW" style="text-transform:uppercase;" />
+              <input type="text" id="perpetual-code" required style="text-transform:uppercase;" />
             </div>
           </div>
           <button type="submit" class="btn" id="perpetual-submit" style="width:auto;padding:11px 22px;">Add code</button>
@@ -301,6 +318,29 @@
   });
 
   // ---------------- Pending activation ----------------
+  // ---------------- Manual reset override ----------------
+  $('override-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('override-msg');
+    hideMsg(msg);
+    const btn = $('override-submit');
+    btn.disabled = true; btn.textContent = 'Sending…';
+
+    const email = $('override-email').value.trim();
+    const redirectTo = new URL('reset-password.html', window.location.href).href;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+
+    btn.disabled = false; btn.textContent = 'Send Reset Link';
+
+    if (error) {
+      showMsg(msg, 'Could not send: ' + error.message, 'error');
+      return;
+    }
+
+    showMsg(msg, `Reset link sent to ${email}.`, 'success');
+    $('override-form').reset();
+  });
+
   async function loadPending(){
     const tbody = document.querySelector('#table-pending tbody');
     tbody.innerHTML = '';
@@ -361,7 +401,23 @@
         <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
         <td>${fmtDate(b.signup_at)}</td>
         <td>${fmtDate(b.activated_at)}</td>
+        <td><button class="btn btn-sm btn-ghost delete-btn" style="color:var(--error);border-color:var(--error-bg);">Delete</button></td>
       `;
+      tr.querySelector('.delete-btn').addEventListener('click', async (ev) => {
+        const ok = confirm(
+          `Delete ${b.business_name} (${b.email})?\n\nThis permanently removes their business record, products, recipes, inventory, orders, and everything else tied to it. This cannot be undone.\n\nTheir login itself must be removed separately from Supabase (Authentication > Users), if needed.`
+        );
+        if (!ok) return;
+
+        ev.target.disabled = true; ev.target.textContent = 'Deleting…';
+        const { error: delError } = await supabase.rpc('fn_admin_delete_business', { p_business_id: b.id });
+        if (delError) {
+          ev.target.disabled = false; ev.target.textContent = 'Delete';
+          alert('Could not delete: ' + delError.message);
+          return;
+        }
+        loadAll();
+      });
       tbody.appendChild(tr);
     });
   }
