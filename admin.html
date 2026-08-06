@@ -401,8 +401,26 @@
         <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
         <td>${fmtDate(b.signup_at)}</td>
         <td>${fmtDate(b.activated_at)}</td>
-        <td><button class="btn btn-sm btn-ghost delete-btn" style="color:var(--error);border-color:var(--error-bg);">Delete</button></td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-sm btn-ghost reset-link-btn">Send Reset Link</button>
+          <button class="btn btn-sm btn-ghost delete-btn" style="color:var(--error);border-color:var(--error-bg);">Delete</button>
+        </td>
       `;
+      tr.querySelector('.reset-link-btn').addEventListener('click', async (ev) => {
+        const ok = confirm(`Send a password reset link to ${b.business_name} (${b.email})?`);
+        if (!ok) return;
+
+        ev.target.disabled = true; ev.target.textContent = 'Sending…';
+        const redirectTo = new URL('reset-password.html', window.location.href).href;
+        const { error: sendError } = await supabase.auth.resetPasswordForEmail(b.email, { redirectTo });
+        ev.target.disabled = false; ev.target.textContent = 'Send Reset Link';
+
+        if (sendError) {
+          alert('Could not send reset link: ' + sendError.message);
+          return;
+        }
+        alert(`Reset link sent to ${b.email}.`);
+      });
       tr.querySelector('.delete-btn').addEventListener('click', async (ev) => {
         const ok = confirm(
           `Delete ${b.business_name} (${b.email})?\n\nThis permanently removes their business record, products, recipes, inventory, orders, and everything else tied to it. This cannot be undone.\n\nTheir login itself must be removed separately from Supabase (Authentication > Users), if needed.`
