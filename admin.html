@@ -367,17 +367,27 @@
         <td>${r.business_name}</td>
         <td>${r.email}</td>
         <td>${fmtDate(r.requested_at)}</td>
-        <td><button class="btn btn-sm resolve-btn">Mark password sent</button></td>
+        <td><button class="btn btn-sm send-link-btn">Send Reset Link</button></td>
       `;
-      tr.querySelector('.resolve-btn').addEventListener('click', async (ev) => {
-        ev.target.disabled = true; ev.target.textContent = 'Saving…';
+      tr.querySelector('.send-link-btn').addEventListener('click', async (ev) => {
+        ev.target.disabled = true; ev.target.textContent = 'Sending…';
+
+        const redirectTo = new URL('reset-password.html', window.location.href).href;
+        const { error: sendError } = await supabase.auth.resetPasswordForEmail(r.email, { redirectTo });
+
+        if (sendError) {
+          ev.target.disabled = false; ev.target.textContent = 'Send Reset Link';
+          alert('Could not send reset link: ' + sendError.message);
+          return;
+        }
+
         const { error: resolveError } = await supabase.rpc('fn_admin_resolve_password_reset', {
           p_request_id: r.id,
           p_resolved_by: currentUserEmail,
         });
         if (resolveError) {
-          ev.target.disabled = false; ev.target.textContent = 'Mark password sent';
-          alert('Could not update: ' + resolveError.message);
+          ev.target.disabled = false; ev.target.textContent = 'Send Reset Link';
+          alert('Link sent, but could not mark the request resolved: ' + resolveError.message);
           return;
         }
         loadResets();
