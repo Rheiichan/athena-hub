@@ -216,6 +216,7 @@
           <button class="btn btn-ghost btn-sm" id="import-btn">Import CSV</button>
           <input type="file" id="import-file" accept=".csv" style="display:none;" />
           <button class="btn btn-ghost btn-sm" id="bulk-stock-btn">Bulk Edit Stock</button>
+          <button class="btn btn-ghost btn-sm" id="bulk-category-btn">Bulk Edit Category</button>
           <button class="btn" id="toggle-add-btn">+ Add Material</button>
         </div>
       </div>
@@ -236,6 +237,17 @@
           </div>
         </div>
         <div id="bulk-stock-msg" class="msg" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="card" id="bulk-category-bar" style="display:none;padding:14px 20px;margin-bottom:16px;background:var(--accent-soft);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <p style="margin:0;font-size:13px;color:var(--accent-ink);">Editing categories directly — set each material's category, then save.</p>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-sm" id="bulk-category-save">Save Category Changes</button>
+            <button class="btn btn-sm btn-ghost" id="bulk-category-cancel">Cancel</button>
+          </div>
+        </div>
+        <div id="bulk-category-msg" class="msg" style="margin-top:10px;"></div>
       </div>
 
       <div id="import-msg" class="msg"></div>
@@ -344,7 +356,7 @@
       <!-- STOCK HISTORY TAB -->
       <div class="tab-panel" id="panel-history">
         <div class="page-head" style="margin-bottom:16px;">
-          <p style="color:var(--muted);font-size:14px;margin:0;">Every stock change across all materials — additions, manual adjustments, and deductions from producing recipe batches.</p>
+          <p style="color:var(--muted);font-size:14px;margin:0;">Every stock change across all materials — additions, manual adjustments, and deductions from producing items in Production Calculator.</p>
           <button class="btn btn-ghost btn-sm" id="refresh-history-btn">Refresh</button>
         </div>
         <div style="margin-bottom:12px;">
@@ -534,6 +546,8 @@
   let products = [];
 
   let bulkStockMode = false;
+  let bulkCategoryMode = false;
+  const CATEGORY_OPTIONS = ['Production Materials', 'Containers', 'Packaging', 'Shipping Materials'];
 
   async function loadProducts(){
     const { data, error } = await supabase.rpc('fn_list_ingredients_with_stock');
@@ -562,24 +576,32 @@
     }
     $('empty-state').style.display = 'none';
 
+    const anyBulkMode = bulkStockMode || bulkCategoryMode;
+
     filtered.forEach((p) => {
       const stockClass = p.current_stock <= 0 ? 'stock-zero' : (p.reorder_level && p.current_stock <= p.reorder_level ? 'stock-low' : '');
       const tr = document.createElement('tr');
       const stockCell = bulkStockMode
         ? `<input type="number" class="bulk-stock-input" data-id="${p.id}" data-original="${p.current_stock}" value="${p.current_stock}" step="0.0001" style="width:110px;" />`
         : `<span class="stock-badge ${stockClass}">${p.current_stock}</span>`;
+      const categoryCell = bulkCategoryMode
+        ? `<select class="bulk-category-input" data-id="${p.id}" data-original="${p.category || ''}" style="min-width:170px;">
+            <option value="">— None —</option>
+            ${CATEGORY_OPTIONS.map(c => `<option value="${c}" ${p.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>`
+        : (p.category ? `<span class="history-reason-badge manual">${p.category}</span>` : '—');
       tr.innerHTML = `
         <td>${p.name}</td>
-        <td>${p.category ? `<span class="history-reason-badge manual">${p.category}</span>` : '—'}</td>
+        <td>${categoryCell}</td>
         <td>${p.unit || '—'}</td>
         <td>${p.cost_per_unit != null ? '₱' + Number(p.cost_per_unit).toFixed(4) : '—'}</td>
         <td>${p.supplier || '—'}</td>
         <td>${stockCell}</td>
         <td style="white-space:nowrap;">
-          <button class="btn btn-sm btn-ghost stock-btn" ${bulkStockMode ? 'disabled' : ''}>Adjust</button>
+          <button class="btn btn-sm btn-ghost stock-btn" ${anyBulkMode ? 'disabled' : ''}>Adjust</button>
           <button class="btn btn-sm btn-ghost history-btn">History</button>
-          <button class="btn btn-sm btn-ghost edit-btn" ${bulkStockMode ? 'disabled' : ''}>Edit</button>
-          <button class="btn btn-sm btn-ghost delete-btn" style="color:var(--error);" ${bulkStockMode ? 'disabled' : ''}>Delete</button>
+          <button class="btn btn-sm btn-ghost edit-btn" ${anyBulkMode ? 'disabled' : ''}>Edit</button>
+          <button class="btn btn-sm btn-ghost delete-btn" style="color:var(--error);" ${anyBulkMode ? 'disabled' : ''}>Delete</button>
         </td>
       `;
       tr.querySelector('.stock-btn').addEventListener('click', () => openStockModal(p));
@@ -593,7 +615,9 @@
   // ---------------- Bulk stock edit ----------------
   $('bulk-stock-btn').addEventListener('click', () => {
     bulkStockMode = true;
+    bulkCategoryMode = false;
     $('bulk-stock-bar').style.display = 'block';
+    $('bulk-category-bar').style.display = 'none';
     $('add-form-card').classList.remove('show');
     loadProducts();
   });
@@ -642,6 +666,61 @@
 
     bulkStockMode = false;
     setTimeout(() => { $('bulk-stock-bar').style.display = 'none'; }, 1200);
+    loadProducts();
+  });
+
+  // ---------------- Bulk category edit ----------------
+  $('bulk-category-btn').addEventListener('click', () => {
+    bulkCategoryMode = true;
+    bulkStockMode = false;
+    $('bulk-category-bar').style.display = 'block';
+    $('bulk-stock-bar').style.display = 'none';
+    $('add-form-card').classList.remove('show');
+    loadProducts();
+  });
+  $('bulk-category-cancel').addEventListener('click', () => {
+    bulkCategoryMode = false;
+    $('bulk-category-bar').style.display = 'none';
+    loadProducts();
+  });
+
+  $('bulk-category-save').addEventListener('click', async () => {
+    const msg = $('bulk-category-msg');
+    hideMsg(msg);
+    const selects = document.querySelectorAll('.bulk-category-input');
+    const changes = [];
+    selects.forEach((el) => {
+      const original = el.dataset.original || '';
+      const next = el.value || '';
+      if (next !== original) {
+        changes.push({ id: el.dataset.id, category: next || null });
+      }
+    });
+
+    if (changes.length === 0) {
+      showMsg(msg, 'No changes to save.', 'error');
+      return;
+    }
+
+    const btn = $('bulk-category-save');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    let failed = 0;
+    for (const c of changes) {
+      const { error } = await supabase.from('ingredients').update({ category: c.category }).eq('id', c.id);
+      if (error) failed++;
+    }
+
+    btn.disabled = false; btn.textContent = 'Save Category Changes';
+
+    if (failed > 0) {
+      showMsg(msg, `Saved ${changes.length - failed} of ${changes.length} changes — ${failed} failed.`, 'error');
+    } else {
+      showMsg(msg, `Updated category for ${changes.length} material${changes.length > 1 ? 's' : ''}.`, 'success');
+    }
+
+    bulkCategoryMode = false;
+    setTimeout(() => { $('bulk-category-bar').style.display = 'none'; }, 1200);
     loadProducts();
   });
 
@@ -894,7 +973,7 @@
 
     if (error) {
       if (error.message && error.message.toLowerCase().includes('foreign key')) {
-        alert(`Can't delete "${p.name}" — it's used in one or more recipes. Remove it from those recipes first.`);
+        alert(`Can't delete "${p.name}" — it's used in one or more items. Remove it from those items first.`);
       } else {
         alert('Could not delete: ' + error.message);
       }

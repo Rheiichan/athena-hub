@@ -229,11 +229,11 @@
           <h1>Production Calculator</h1>
           <p>Cost out what you make from your materials and equipment, and optionally sell it via POS.</p>
         </div>
-        <button class="btn" id="toggle-add-recipe-btn">+ New Recipe</button>
+        <button class="btn" id="toggle-add-recipe-btn">+ New Item</button>
       </div>
 
       <div class="tabs">
-        <div class="tab active" data-tab="recipes">Recipes</div>
+        <div class="tab active" data-tab="recipes">Items</div>
         <div class="tab" data-tab="equipment">Equipment</div>
       </div>
 
@@ -242,11 +242,11 @@
 
         <div class="card add-form" id="recipe-editor-card">
           <div class="card-pad">
-            <h3 id="editor-title" style="font-family:'Fraunces',serif;font-weight:600;font-size:16px;margin:0 0 14px;">New recipe</h3>
+            <h3 id="editor-title" style="font-family:'Fraunces',serif;font-weight:600;font-size:16px;margin:0 0 14px;">New Item</h3>
             <div id="recipe-msg" class="msg"></div>
 
             <div class="field">
-              <label for="r-name">Recipe name</label>
+              <label for="r-name">Item name</label>
               <input type="text" id="r-name" required />
             </div>
             <div class="field">
@@ -254,7 +254,7 @@
               <textarea id="r-desc" rows="2"></textarea>
             </div>
 
-            <label>Recipe / batch is defined by</label>
+            <label>Item / batch is defined by</label>
             <div class="qty-buttons" style="max-width:340px;">
               <button type="button" class="batch-mode-btn selected" data-mode="quantity">By quantity</button>
               <button type="button" class="batch-mode-btn" data-mode="percentage">By %</button>
@@ -262,7 +262,7 @@
 
             <div class="field-row">
               <div class="field">
-                <label for="r-yield-qty">This recipe makes</label>
+                <label for="r-yield-qty">This item makes</label>
                 <input type="number" id="r-yield-qty" step="0.0001" min="0" placeholder="e.g. 1000" />
               </div>
               <div class="field">
@@ -314,7 +314,7 @@
 
             <div class="toggle-row">
               <label class="switch"><input type="checkbox" id="add-to-pos-toggle" /><span class="switch-track"></span></label>
-              <label for="add-to-pos-toggle" style="margin:0;font-size:13.5px;">Add this recipe to POS as a product</label>
+              <label for="add-to-pos-toggle" style="margin:0;font-size:13.5px;">Add this item to POS as a product</label>
             </div>
 
             <div id="pos-fields" style="display:none;">
@@ -334,14 +334,14 @@
             </div>
 
             <div style="margin-top:22px;">
-              <button type="button" class="btn" id="save-recipe-btn">Save recipe</button>
+              <button type="button" class="btn" id="save-recipe-btn">Save Item</button>
               <button type="button" class="btn btn-ghost" id="cancel-recipe-btn" style="margin-left:8px;">Cancel</button>
             </div>
           </div>
         </div>
 
         <div id="recipe-list"></div>
-        <div class="empty-state" id="recipes-empty" style="display:none;">No recipes yet — create your first one above.</div>
+        <div class="empty-state" id="recipes-empty" style="display:none;">No items yet — create your first one above.</div>
       </div>
 
       <!-- EQUIPMENT TAB -->
@@ -643,7 +643,7 @@
   }
 
   async function deleteRecipe(r){
-    const ok = confirm(`Delete recipe "${r.name}"? This won't delete any linked product, just the recipe itself.`);
+    const ok = confirm(`Delete "${r.name}"? This won't delete any linked product, just the item itself.`);
     if (!ok) return;
     const { error } = await supabase.from('recipes').delete().eq('id', r.id);
     if (error) { alert('Could not delete: ' + error.message); return; }
@@ -660,7 +660,7 @@
 
   function openRecipeEditor(recipe){
     editingRecipeId = recipe ? recipe.id : null;
-    $('editor-title').textContent = recipe ? `Edit — ${recipe.name}` : 'New recipe';
+    $('editor-title').textContent = recipe ? `Edit — ${recipe.name}` : 'New Item';
     hideMsg($('recipe-msg'));
 
     $('r-name').value = recipe ? recipe.name : '';
@@ -808,7 +808,7 @@
 
     const banner = $('shortage-banner');
     if (shortageCount > 0) {
-      banner.textContent = `⚠ Not enough stock for ${shortageCount} item${shortageCount > 1 ? 's' : ''} (materials/packaging). You can still save the recipe — just make sure to restock before producing.`;
+      banner.textContent = `⚠ Not enough stock for ${shortageCount} item${shortageCount > 1 ? 's' : ''} (materials/packaging). You can still save this item — just make sure to restock before producing.`;
       banner.classList.add('show');
     } else {
       banner.classList.remove('show');
@@ -1067,7 +1067,7 @@
     hideMsg(msg);
 
     const name = $('r-name').value.trim();
-    if (!name) { showMsg(msg, 'Recipe name is required.', 'error'); return; }
+    if (!name) { showMsg(msg, 'Item name is required.', 'error'); return; }
     const yieldQty = parseFloat($('r-yield-qty').value) || 0;
     const yieldUnit = $('r-yield-unit').value;
     const description = $('r-desc').value.trim() || null;
@@ -1081,14 +1081,14 @@
       const { error } = await supabase.from('recipes').update({
         name, description, batch_mode: batchMode, yield_qty: yieldQty, yield_unit: yieldUnit, updated_at: new Date().toISOString(),
       }).eq('id', recipeId);
-      if (error) { showMsg(msg, 'Could not save: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'Save recipe'; return; }
+      if (error) { showMsg(msg, 'Could not save: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'Save Item'; return; }
       await supabase.from('recipe_ingredients').delete().eq('recipe_id', recipeId);
       await supabase.from('recipe_equipment').delete().eq('recipe_id', recipeId);
     } else {
       const { data: newRecipe, error } = await supabase.from('recipes').insert({
         business_id: businessId, name, description, batch_mode: batchMode, yield_qty: yieldQty, yield_unit: yieldUnit, is_seed_template: false,
       }).select().single();
-      if (error) { showMsg(msg, 'Could not save: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'Save recipe'; return; }
+      if (error) { showMsg(msg, 'Could not save: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'Save Item'; return; }
       recipeId = newRecipe.id;
     }
 
@@ -1146,7 +1146,7 @@
       await supabase.from('products').update({ recipe_id: null }).eq('id', linkedProduct.id);
     }
 
-    btn.disabled = false; btn.textContent = 'Save recipe';
+    btn.disabled = false; btn.textContent = 'Save Item';
     closeRecipeEditor();
     await Promise.all([loadProductsList(), loadRecipes()]);
   });
@@ -1160,7 +1160,7 @@
     const linkedProduct = allProducts.find(p => p.recipe_id === recipe.id);
     $('produce-modal-sub').textContent = linkedProduct
       ? `Choose what this should update — deduct materials, add stock to "${linkedProduct.name}", or both.`
-      : 'No product is linked to this recipe yet, so there is nothing to add stock to — only the materials checkbox applies.';
+      : 'No product is linked to this item yet, so there is nothing to add stock to — only the materials checkbox applies.';
     $('produce-batches').value = 1;
     $('produce-deduct-materials').checked = true;
     $('produce-add-product').checked = !!linkedProduct;
@@ -1307,7 +1307,7 @@
     const { error } = await supabase.from('equipment').delete().eq('id', eq.id);
     if (error) {
       if (error.message && error.message.toLowerCase().includes('foreign key')) {
-        alert(`Can't delete "${eq.name}" — it's used in one or more recipes. Remove it from those recipes first.`);
+        alert(`Can't delete "${eq.name}" — it's used in one or more items. Remove it from those items first.`);
       } else {
         alert('Could not delete: ' + error.message);
       }
