@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Athena — Sign up</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --panel-1:#2A1A45;
@@ -42,7 +42,7 @@
 
 
   .brand-eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#C9B8E6;margin:0 0 6px;}
-  .brand-name{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(38px,6vw,52px);line-height:1;margin:0;}
+  .brand-name{font-family:Arial,sans-serif;font-weight:500;font-size:clamp(38px,6vw,52px);line-height:1;margin:0;}
   .brand-sub{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#D8CBEE;margin:6px 0 0;font-weight:600;}
 
   .panel-steps{position:relative;z-index:1;}
@@ -57,7 +57,7 @@
   .content{display:flex;align-items:center;justify-content:center;padding:48px 24px;}
   .form-wrap{width:100%;max-width:420px;}
 
-  .form-wrap h1{font-family:'Fraunces',serif;font-weight:500;font-size:26px;margin:0 0 6px;}
+  .form-wrap h1{font-family:Arial,sans-serif;font-weight:500;font-size:26px;margin:0 0 6px;}
   .form-wrap p.lede{color:var(--muted);font-size:14.5px;margin:0 0 28px;line-height:1.5;}
 
   label{display:block;font-size:13px;font-weight:600;margin:0 0 6px;color:var(--ink);}
@@ -141,7 +141,7 @@
           <div class="field-row">
             <div class="field">
               <label for="code">Business plan code</label>
-              <input type="text" id="code" required autocomplete="off" />
+              <input type="text" id="code" required autocomplete="off" style="text-transform:uppercase;" />
             </div>
             <div class="field">
               <label for="contact-number">Contact number</label>
@@ -279,7 +279,7 @@
 
     const businessName = $('business-name').value.trim();
     const email = $('email').value.trim();
-    const code = $('code').value.trim();
+    const code = $('code').value.trim().toUpperCase();
     const contactNumber = $('contact-number').value.trim();
     const q1 = $('q1').value.trim(), a1 = $('a1').value.trim();
     const q2 = $('q2').value.trim(), a2 = $('a2').value.trim();
