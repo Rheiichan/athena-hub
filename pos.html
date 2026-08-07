@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Athena — POS</title>
+<title>Athena — Point of Sale</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -83,7 +83,7 @@
   .field{margin-bottom:14px;}
   .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   @media (max-width:560px){ .field-row{grid-template-columns:1fr;} }
-  input[type=text],input[type=number],select,textarea{
+  input[type=text],input[type=number],input[type=date],select,textarea{
     width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;
     font-size:14px;font-family:inherit;color:var(--ink);background:var(--bg);
   }
@@ -256,7 +256,7 @@
     <main>
       <div class="page-head">
         <div>
-          <h1>POS</h1>
+          <h1>Point of Sale</h1>
           <p>Ring up sales against your current product stock.</p>
         </div>
       </div>
@@ -287,6 +287,31 @@
 
             <div id="checkout-fields" style="display:none;margin-top:16px;">
               <div class="field">
+                <label for="order-number">Order number</label>
+                <input type="text" id="order-number" readonly style="background:var(--bg);color:var(--muted);cursor:not-allowed;" />
+              </div>
+              <div class="field">
+                <label for="customer-name">Customer name</label>
+                <input type="text" id="customer-name" placeholder="Optional" />
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label for="sale-date">Date of purchase</label>
+                  <input type="date" id="sale-date" />
+                </div>
+                <div class="field">
+                  <label for="sales-channel">Sales channel</label>
+                  <select id="sales-channel">
+                    <option value="Walk-in">Walk-in</option>
+                    <option value="Online">Online</option>
+                    <option value="Facebook">Facebook</option>
+                    <option value="Instagram">Instagram</option>
+                    <option value="Marketplace">Marketplace</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field">
                 <label for="payment-method">Payment method</label>
                 <select id="payment-method">
                   <option value="cash">Cash</option>
@@ -297,6 +322,7 @@
                 </select>
               </div>
               <div id="checkout-msg" class="msg"></div>
+              <button type="button" class="btn btn-ghost" id="view-invoice-btn" style="width:100%;margin-bottom:8px;">View Invoice</button>
               <button class="btn" id="checkout-btn" style="width:100%;">Complete Sale</button>
             </div>
           </div>
@@ -340,11 +366,13 @@
       <span>Total</span>
       <span id="txn-total"></span>
     </div>
+    <button class="btn btn-ghost" id="txn-view-invoice-btn" style="width:100%;margin-top:14px;">View Invoice</button>
   </div>
 </div>
 
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+  import { jsPDF } from 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/+esm';
 
   const SUPABASE_URL = 'https://nitbsqhvjhdappgsghci.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pdGJzcWh2amhkYXBwZ3NnaGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzgxNDksImV4cCI6MjEwMTUxNDE0OX0.r0wKMkslE1dOJIpy62bzDzfoEUvw73AA5A9GeMcnhnI';
@@ -510,6 +538,11 @@
     $('cart-total-row').style.display = 'flex';
     $('checkout-fields').style.display = 'block';
 
+    if (!$('order-number').value) {
+      $('order-number').value = generateOrderNumber();
+      $('sale-date').value = new Date().toISOString().slice(0, 10);
+    }
+
     let total = 0;
     cart.forEach((line) => {
       total += line.qty * line.unit_price;
@@ -540,6 +573,155 @@
     $('cart-total').textContent = peso(total);
   }
 
+  // ---------------- Order number + Invoice PDF ----------------
+  function generateOrderNumber(){
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    return `ORD-${stamp}`;
+  }
+
+  async function loadImageAsDataUrl(url){
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  function hexToRgb(hex){
+    const h = hex.replace('#', '');
+    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+  }
+
+  async function generateInvoicePDF(saleData){
+    const palette = THEME_PALETTES[businessInfo.theme_color] || THEME_PALETTES.violet;
+    const [pr, pg, pb] = hexToRgb(palette.panel);
+
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Header band
+    doc.setFillColor(pr, pg, pb);
+    doc.rect(0, 0, pageWidth, 32, 'F');
+
+    let textX = 15;
+    if (businessInfo.logo_url) {
+      const dataUrl = await loadImageAsDataUrl(businessInfo.logo_url);
+      if (dataUrl) {
+        try { doc.addImage(dataUrl, 'PNG', 12, 6, 20, 20); textX = 36; } catch {}
+      }
+    }
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(businessInfo.business_name || 'Business', textX, 14);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    const contactLine = [businessInfo.contact_number, businessInfo.email, businessInfo.website].filter(Boolean).join('  ·  ');
+    if (contactLine) doc.text(contactLine, textX, 21);
+
+    // Invoice title + meta
+    doc.setTextColor(30, 26, 36);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('INVOICE', 15, 45);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(90, 85, 100);
+    doc.text(`Order #: ${saleData.orderNumber}`, pageWidth - 15, 40, { align: 'right' });
+    doc.text(`Date: ${saleData.saleDate}`, pageWidth - 15, 46, { align: 'right' });
+
+    let y = 56;
+    doc.setTextColor(30, 26, 36);
+    if (saleData.customerName) { doc.text(`Customer: ${saleData.customerName}`, 15, y); y += 6; }
+    if (saleData.salesChannel) { doc.text(`Sales channel: ${saleData.salesChannel}`, 15, y); y += 6; }
+    doc.text(`Payment method: ${saleData.paymentMethod}`, 15, y); y += 10;
+
+    // Line items table
+    const [ar, ag, ab] = hexToRgb(palette.accentInk);
+    doc.setFillColor(pr, pg, pb);
+    doc.rect(15, y, pageWidth - 30, 8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Item', 18, y + 5.5);
+    doc.text('Qty', pageWidth - 90, y + 5.5, { align: 'right' });
+    doc.text('Unit Price', pageWidth - 55, y + 5.5, { align: 'right' });
+    doc.text('Total', pageWidth - 18, y + 5.5, { align: 'right' });
+    y += 8;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(30, 26, 36);
+    saleData.items.forEach((item, idx) => {
+      const rowY = y + 7;
+      if (idx % 2 === 1) {
+        doc.setFillColor(247, 245, 250);
+        doc.rect(15, y, pageWidth - 30, 8, 'F');
+      }
+      doc.text(item.name, 18, rowY - 1.5);
+      doc.text(String(item.qty), pageWidth - 90, rowY - 1.5, { align: 'right' });
+      doc.text(peso(item.unit_price), pageWidth - 55, rowY - 1.5, { align: 'right' });
+      doc.text(peso(item.qty * item.unit_price), pageWidth - 18, rowY - 1.5, { align: 'right' });
+      y += 8;
+    });
+
+    y += 4;
+    doc.setDrawColor(220, 215, 225);
+    doc.line(15, y, pageWidth - 15, y);
+    y += 8;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(ar, ag, ab);
+    doc.text('Total', pageWidth - 55, y, { align: 'right' });
+    doc.text(peso(saleData.total), pageWidth - 18, y, { align: 'right' });
+
+    // Footer
+    const pageHeight = doc.internal.pageSize.getHeight();
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(150, 145, 160);
+    doc.text('Athena Business Hub by Soaphrodite Labs', pageWidth / 2, pageHeight - 12, { align: 'center' });
+
+    return doc;
+  }
+
+  function collectSaleDataFromForm(){
+    return {
+      orderNumber: $('order-number').value,
+      customerName: $('customer-name').value.trim(),
+      saleDate: $('sale-date').value || new Date().toISOString().slice(0, 10),
+      salesChannel: $('sales-channel').value,
+      paymentMethod: $('payment-method').options[$('payment-method').selectedIndex].text,
+      items: cart.map(l => ({ name: l.name, qty: l.qty, unit_price: l.unit_price })),
+      total: cart.reduce((sum, l) => sum + l.qty * l.unit_price, 0),
+    };
+  }
+
+  $('view-invoice-btn').addEventListener('click', async () => {
+    if (cart.length === 0) return;
+    const btn = $('view-invoice-btn');
+    btn.disabled = true; btn.textContent = 'Generating…';
+    try {
+      const doc = await generateInvoicePDF(collectSaleDataFromForm());
+      const blobUrl = doc.output('bloburl');
+      window.open(blobUrl, '_blank');
+    } catch (e) {
+      alert('Could not generate invoice: ' + e.message);
+    }
+    btn.disabled = false; btn.textContent = 'View Invoice';
+  });
+
   // ---------------- Checkout ----------------
   $('checkout-btn').addEventListener('click', async () => {
     const msg = $('checkout-msg');
@@ -551,9 +733,15 @@
 
     const items = cart.map(l => ({ product_id: l.product_id, qty: l.qty, unit_price: l.unit_price }));
     const paymentMethod = $('payment-method').value;
+    const orderNumber = $('order-number').value;
+    const customerName = $('customer-name').value.trim() || null;
+    const salesChannel = $('sales-channel').value;
+    const saleDate = $('sale-date').value || new Date().toISOString().slice(0, 10);
 
     const { data: transactionId, error } = await supabase.rpc('fn_process_pos_sale', {
       p_items: items, p_payment_method: paymentMethod,
+      p_order_number: orderNumber, p_customer_name: customerName,
+      p_sales_channel: salesChannel, p_sale_date: saleDate,
     });
 
     btn.disabled = false; btn.textContent = 'Complete Sale';
@@ -564,7 +752,7 @@
     }
 
     const total = cart.reduce((sum, l) => sum + l.qty * l.unit_price, 0);
-    $('receipt-sub').textContent = `${fmtDate(new Date().toISOString())} · ${paymentMethod.replace('_', ' ')}`;
+    $('receipt-sub').textContent = `${orderNumber} · ${fmtDate(new Date().toISOString())} · ${paymentMethod.replace('_', ' ')}`;
     $('receipt-lines').innerHTML = cart.map(l => `
       <div class="receipt-line"><span>${l.qty} × ${l.name}</span><span>${peso(l.qty * l.unit_price)}</span></div>
     `).join('');
@@ -572,6 +760,8 @@
     $('receipt-modal-overlay').classList.add('show');
 
     cart = [];
+    $('order-number').value = '';
+    $('customer-name').value = '';
     renderCart();
     await loadProductGrid();
   });
@@ -596,8 +786,8 @@
       row.className = 'sales-row';
       row.innerHTML = `
         <div>
-          <div><strong>${peso(t.total_amount)}</strong></div>
-          <div class="meta">${(t.payment_method || '').replace('_', ' ')} · ${fmtDate(t.created_at)}</div>
+          <div><strong>${peso(t.total_amount)}</strong> ${t.order_number ? `<span style="color:var(--muted);font-size:11.5px;">${t.order_number}</span>` : ''}</div>
+          <div class="meta">${t.customer_name ? t.customer_name + ' · ' : ''}${(t.payment_method || '').replace('_', ' ')}${t.sales_channel ? ' · ' + t.sales_channel : ''} · ${fmtDate(t.created_at)}</div>
         </div>
         <div style="color:var(--muted);font-size:12px;">View items →</div>
       `;
@@ -607,15 +797,36 @@
   }
 
   async function openTransactionDetail(t){
-    $('txn-modal-sub').textContent = `${(t.payment_method || '').replace('_', ' ')} · ${fmtDate(t.created_at)}`;
+    $('txn-modal-sub').textContent = `${t.order_number ? t.order_number + ' · ' : ''}${(t.payment_method || '').replace('_', ' ')} · ${fmtDate(t.created_at)}`;
     $('txn-lines').innerHTML = '<p style="color:var(--muted);font-size:13px;">Loading…</p>';
     $('txn-total').textContent = peso(t.total_amount);
     $('txn-modal-overlay').classList.add('show');
 
     const { data } = await supabase.rpc('fn_get_pos_transaction_items', { p_transaction_id: t.id });
-    $('txn-lines').innerHTML = (data || []).map(item => `
+    const items = data || [];
+    $('txn-lines').innerHTML = items.map(item => `
       <div class="receipt-line"><span>${item.qty} × ${item.product_name}</span><span>${peso(item.qty * item.unit_price)}</span></div>
     `).join('') || '<p style="color:var(--muted);font-size:13px;">No items found.</p>';
+
+    $('txn-view-invoice-btn').onclick = async () => {
+      const btn = $('txn-view-invoice-btn');
+      btn.disabled = true; btn.textContent = 'Generating…';
+      try {
+        const doc = await generateInvoicePDF({
+          orderNumber: t.order_number || '—',
+          customerName: t.customer_name || '',
+          saleDate: t.sale_date || t.created_at.slice(0, 10),
+          salesChannel: t.sales_channel || '',
+          paymentMethod: (t.payment_method || '').replace('_', ' '),
+          items: items.map(i => ({ name: i.product_name, qty: i.qty, unit_price: i.unit_price })),
+          total: t.total_amount,
+        });
+        window.open(doc.output('bloburl'), '_blank');
+      } catch (e) {
+        alert('Could not generate invoice: ' + e.message);
+      }
+      btn.disabled = false; btn.textContent = 'View Invoice';
+    };
   }
   $('txn-modal-close').addEventListener('click', () => $('txn-modal-overlay').classList.remove('show'));
   $('txn-modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'txn-modal-overlay') $('txn-modal-overlay').classList.remove('show'); });
@@ -627,7 +838,7 @@
 
     const { data: business, error } = await supabase
       .from('businesses')
-      .select('id, business_name, status, theme_color, theme_mode, logo_url')
+      .select('id, business_name, status, theme_color, theme_mode, logo_url, email, website, contact_number')
       .eq('owner_auth_user_id', session.user.id)
       .single();
 
@@ -640,12 +851,15 @@
     $('sidebar-biz-name').textContent = business.business_name;
     $('who-email').textContent = session.user.email;
     updateSidebarLogo(business.logo_url);
+    businessInfo = business;
 
     await loadProductGrid();
 
     $('splash').style.display = 'none';
     $('shell').classList.add('show');
   }
+
+  let businessInfo = null;
 
   $('sign-out').addEventListener('click', signOutAndRedirect);
   $('sign-out-mobile').addEventListener('click', signOutAndRedirect);
