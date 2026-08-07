@@ -295,12 +295,18 @@
 
             <div class="shortage-banner" id="shortage-banner"></div>
 
+            <h4 style="font-size:13px;margin:20px 0 8px;">Packaging (optional)</h4>
+            <p class="hint" style="margin:-4px 0 10px;color:var(--muted);font-size:12.5px;">Boxes, containers, labels — anything categorized as Containers or Packaging in Materials Inventory.</p>
+            <div id="packaging-rows"></div>
+            <button type="button" class="btn btn-ghost btn-sm" id="add-packaging-row-btn">+ Add packaging</button>
+
             <h4 style="font-size:13px;margin:20px 0 8px;">Equipment (optional)</h4>
             <div id="equipment-rows"></div>
             <button type="button" class="btn btn-ghost btn-sm" id="add-equipment-row-btn">+ Add equipment</button>
 
             <div class="summary-box" id="cost-summary">
               <div class="summary-line"><span>Materials cost</span><span id="sum-materials">₱0.00</span></div>
+              <div class="summary-line"><span>Packaging cost</span><span id="sum-packaging">₱0.00</span></div>
               <div class="summary-line"><span>Equipment cost</span><span id="sum-equipment">₱0.00</span></div>
               <div class="summary-line total"><span>Total cost per batch</span><span id="sum-total">₱0.00</span></div>
               <div class="summary-line"><span>Cost per <span id="sum-unit-label">unit</span></span><span id="sum-per-unit">₱0.00</span></div>
@@ -405,6 +411,16 @@
   </div>
 </div>
 
+<!-- SHORTAGE DETAIL MODAL -->
+<div class="modal-overlay" id="shortage-modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="shortage-modal-close">&times;</button>
+    <h3 id="shortage-modal-title">Short materials</h3>
+    <p class="sub">These materials need restocking before you can produce a full batch.</p>
+    <div id="shortage-modal-list"></div>
+  </div>
+</div>
+
 <!-- PRODUCE BATCH MODAL -->
 <div class="modal-overlay" id="produce-modal-overlay">
   <div class="modal">
@@ -417,6 +433,16 @@
       <input type="number" id="produce-batches" value="1" min="0.01" step="0.01" />
     </div>
     <div id="produce-preview" style="font-size:13px;color:var(--muted);margin-bottom:14px;"></div>
+
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <input type="checkbox" id="produce-deduct-materials" checked style="width:16px;height:16px;" />
+      <label for="produce-deduct-materials" style="margin:0;font-size:13.5px;font-weight:500;">Deduct materials from Materials Inventory</label>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+      <input type="checkbox" id="produce-add-product" checked style="width:16px;height:16px;" />
+      <label for="produce-add-product" style="margin:0;font-size:13.5px;font-weight:500;">Add produced stock to Product Inventory</label>
+    </div>
+
     <button class="btn" id="produce-confirm-btn" style="width:100%;">Produce &amp; update stock</button>
   </div>
 </div>
@@ -485,6 +511,7 @@
   let batchMode = 'quantity';
   let ingredientRows = [];   // working state while editing: {ingredient_id, quantity, unit}
   let equipmentRows = [];    // working state: {equipment_id, uses_per_batch}
+  let packagingRows = [];    // working state: {ingredient_id, quantity, unit} — always literal qty, never %
   let tierRows = [];         // working state: {min_qty, max_qty, price}
 
   let editingEquipmentId = null;
@@ -585,7 +612,7 @@
           <div>
             <h3>${r.name}${linkedProduct ? ' <span style="font-size:11px;font-weight:600;color:var(--accent-ink);background:var(--accent-soft);padding:2px 8px;border-radius:99px;">In POS</span>' : ''}</h3>
             <div class="meta">Makes ${r.yield_qty || 0} ${r.yield_unit || ''} · ${r.batch_mode === 'percentage' ? 'By %' : 'By quantity'} · ${peso(cost.perUnit)}/${r.yield_unit || 'unit'}</div>
-            ${cost.shortages.length ? `<div class="shortage-tag" style="display:inline-block;margin-top:6px;">⚠ Short on ${cost.shortages.length} material(s)</div>` : ''}
+            ${cost.shortages.length ? `<button type="button" class="shortage-tag shortage-check-btn" data-recipe-id="${r.id}" style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;background:none;border:none;padding:0;cursor:pointer;text-decoration:underline;font-family:inherit;">⚠ Short on ${cost.shortages.length} material(s) — check materials</button>` : ''}
           </div>
           <div class="recipe-cost-pill">${peso(cost.total)} / batch</div>
         </div>
@@ -598,8 +625,21 @@
       card.querySelector('.edit-recipe-btn').addEventListener('click', () => openRecipeEditor(r));
       card.querySelector('.produce-btn').addEventListener('click', () => openProduceModal(r));
       card.querySelector('.delete-recipe-btn').addEventListener('click', () => deleteRecipe(r));
+      const shortageBtn = card.querySelector('.shortage-check-btn');
+      if (shortageBtn) shortageBtn.addEventListener('click', () => openShortageModal(r, cost.shortages));
       wrap.appendChild(card);
     });
+  }
+
+  function openShortageModal(recipe, shortages){
+    $('shortage-modal-title').textContent = `Short materials — ${recipe.name}`;
+    $('shortage-modal-list').innerHTML = shortages.map(s => `
+      <div class="history-row">
+        <div>${s.name}</div>
+        <div class="shortage-tag" style="margin:0;">Short by ${s.short.toFixed(3)} ${s.unit}</div>
+      </div>
+    `).join('');
+    $('shortage-modal-overlay').classList.add('show');
   }
 
   async function deleteRecipe(r){
@@ -634,9 +674,12 @@
       ? 'Percentages are of the total batch size above — they should add up to 100%.'
       : 'Quantities below are entered directly, each in its own unit.';
 
-    ingredientRows = recipe
+    const allRecipeIngredients = recipe
       ? (recipeIngredientsMap[recipe.id] || []).map(ri => ({ ingredient_id: ri.ingredient_id, quantity: ri.quantity, unit: ri.unit }))
       : [];
+    ingredientRows = allRecipeIngredients.filter(row => !isPackagingMaterial(row.ingredient_id));
+    packagingRows = allRecipeIngredients.filter(row => isPackagingMaterial(row.ingredient_id));
+
     equipmentRows = recipe
       ? (recipeEquipmentMap[recipe.id] || []).map(re => ({ equipment_id: re.equipment_id, uses_per_batch: re.uses_per_batch }))
       : [];
@@ -651,10 +694,16 @@
     if (linkedProduct) loadExistingTiers(linkedProduct.id);
 
     renderIngredientRows();
+    renderPackagingRows();
     renderEquipmentRowsInEditor();
     renderTierRows();
     $('recipe-editor-card').classList.add('show');
     $('recipe-editor-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function isPackagingMaterial(ingredientId){
+    const mat = allMaterials.find(m => m.id === ingredientId);
+    return mat && (mat.category === 'Containers' || mat.category === 'Packaging');
   }
 
   async function loadExistingTiers(productId){
@@ -700,7 +749,7 @@
       div.innerHTML = `
         <select class="ing-material" data-idx="${idx}">
           <option value="">Select material…</option>
-          ${allMaterials.map(m => `<option value="${m.id}" ${m.id === row.ingredient_id ? 'selected' : ''}>${m.name}</option>`).join('')}
+          ${allMaterials.filter(m => m.category !== 'Containers' && m.category !== 'Packaging').map(m => `<option value="${m.id}" ${m.id === row.ingredient_id ? 'selected' : ''}>${m.name}</option>`).join('')}
         </select>
         <input type="number" class="ing-qty" data-idx="${idx}" step="0.0001" min="0" placeholder="${batchMode === 'percentage' ? '%' : 'qty'}" value="${row.quantity ?? ''}" />
         ${unitCell}
@@ -755,9 +804,11 @@
       info.innerHTML = html;
     });
 
+    shortageCount += updatePackagingInfo();
+
     const banner = $('shortage-banner');
     if (shortageCount > 0) {
-      banner.textContent = `⚠ Not enough stock for ${shortageCount} material${shortageCount > 1 ? 's' : ''}. You can still save the recipe — just make sure to restock before producing.`;
+      banner.textContent = `⚠ Not enough stock for ${shortageCount} item${shortageCount > 1 ? 's' : ''} (materials/packaging). You can still save the recipe — just make sure to restock before producing.`;
       banner.classList.add('show');
     } else {
       banner.classList.remove('show');
@@ -775,7 +826,82 @@
     hint.style.color = Math.abs(total - 100) > 0.5 ? 'var(--error)' : 'var(--success)';
   }
 
-  // ---------------- Equipment rows (inside recipe editor) ----------------
+  // ---------------- Packaging rows (inside recipe editor) ----------------
+  $('add-packaging-row-btn').addEventListener('click', () => {
+    packagingRows.push({ ingredient_id: '', quantity: '', unit: 'pcs' });
+    renderPackagingRows();
+  });
+
+  function renderPackagingRows(){
+    const wrap = $('packaging-rows');
+    wrap.innerHTML = '';
+    const packagingMaterials = allMaterials.filter(m => m.category === 'Containers' || m.category === 'Packaging');
+
+    packagingRows.forEach((row, idx) => {
+      const div = document.createElement('div');
+      div.className = 'row-item';
+      div.innerHTML = `
+        <select class="pkg-material" data-idx="${idx}">
+          <option value="">Select packaging…</option>
+          ${packagingMaterials.map(m => `<option value="${m.id}" ${m.id === row.ingredient_id ? 'selected' : ''}>${m.name}</option>`).join('')}
+        </select>
+        <input type="number" class="pkg-qty" data-idx="${idx}" step="0.0001" min="0" placeholder="qty" value="${row.quantity ?? ''}" />
+        <select class="pkg-unit" data-idx="${idx}">${UNIT_OPTIONS.map(u => `<option value="${u}" ${row.unit === u ? 'selected' : ''}>${u}</option>`).join('')}</select>
+        <button type="button" class="row-remove" data-idx="${idx}">&times;</button>
+      `;
+      wrap.appendChild(div);
+      const info = document.createElement('div');
+      info.id = `pkg-info-${idx}`;
+      info.style.cssText = 'font-size:11.5px;color:var(--muted);margin:-4px 0 10px;';
+      wrap.appendChild(info);
+    });
+
+    if (packagingMaterials.length === 0 && packagingRows.length === 0) {
+      wrap.innerHTML = '<p class="hint" style="color:var(--muted);font-size:12px;">No materials are categorized as Containers or Packaging yet — set a material\'s category in Materials Inventory to use it here.</p>';
+    }
+
+    wrap.querySelectorAll('.pkg-material').forEach((el) => el.addEventListener('change', (e) => {
+      const idx = +e.target.dataset.idx;
+      packagingRows[idx].ingredient_id = e.target.value;
+      const mat = allMaterials.find(m => m.id === e.target.value);
+      if (mat) packagingRows[idx].unit = mat.unit || 'pcs';
+      renderPackagingRows();
+    }));
+    wrap.querySelectorAll('.pkg-qty').forEach((el) => el.addEventListener('input', (e) => {
+      packagingRows[+e.target.dataset.idx].quantity = e.target.value;
+      updateAllIngredientInfo();
+    }));
+    wrap.querySelectorAll('.pkg-unit').forEach((el) => el.addEventListener('change', (e) => {
+      packagingRows[+e.target.dataset.idx].unit = e.target.value;
+      updateAllIngredientInfo();
+    }));
+    wrap.querySelectorAll('.row-remove').forEach((el) => el.addEventListener('click', (e) => {
+      packagingRows.splice(+e.target.dataset.idx, 1);
+      renderPackagingRows();
+    }));
+
+    return updatePackagingInfo();
+  }
+
+  function updatePackagingInfo(){
+    let shortageCount = 0;
+    packagingRows.forEach((row, idx) => {
+      const material = allMaterials.find(m => m.id === row.ingredient_id);
+      const info = document.getElementById(`pkg-info-${idx}`);
+      if (!info) return;
+      const actualQty = parseFloat(row.quantity) || 0;
+      const cost = material ? actualQty * (material.cost_per_unit || 0) : 0;
+      let html = material ? `${actualQty.toFixed(3)} ${row.unit || ''} · ${peso(cost)}` : '';
+      if (material && actualQty > material.current_stock) {
+        shortageCount++;
+        html += ` <span class="shortage-tag">Short by ${(actualQty - material.current_stock).toFixed(3)} ${material.unit} (have ${material.current_stock})</span>`;
+      }
+      info.innerHTML = html;
+    });
+    return shortageCount;
+  }
+
+
   $('add-equipment-row-btn').addEventListener('click', () => {
     equipmentRows.push({ equipment_id: '', uses_per_batch: 1 });
     renderEquipmentRowsInEditor();
@@ -844,6 +970,13 @@
       materialsCost += actualQty * (material.cost_per_unit || 0);
     });
 
+    let packagingCost = 0;
+    packagingRows.forEach((row) => {
+      const material = allMaterials.find(m => m.id === row.ingredient_id);
+      if (!material) return;
+      packagingCost += (parseFloat(row.quantity) || 0) * (material.cost_per_unit || 0);
+    });
+
     let equipmentCost = 0;
     equipmentRows.forEach((row) => {
       const eq = allEquipment.find(e => e.id === row.equipment_id);
@@ -851,11 +984,12 @@
       equipmentCost += (parseFloat(row.uses_per_batch) || 0) * (eq.cost_per_use || 0);
     });
 
-    const total = materialsCost + equipmentCost;
+    const total = materialsCost + packagingCost + equipmentCost;
     const perUnit = yieldQty > 0 ? total / yieldQty : 0;
     lastPerUnitCost = perUnit;
 
     $('sum-materials').textContent = peso(materialsCost);
+    $('sum-packaging').textContent = peso(packagingCost);
     $('sum-equipment').textContent = peso(equipmentCost);
     $('sum-total').textContent = peso(total);
     $('sum-unit-label').textContent = yieldUnit || 'unit';
@@ -959,10 +1093,13 @@
     }
 
     const validIngredients = ingredientRows.filter(r => r.ingredient_id && parseFloat(r.quantity) > 0);
-    if (validIngredients.length > 0) {
-      await supabase.from('recipe_ingredients').insert(validIngredients.map(r => ({
-        recipe_id: recipeId, ingredient_id: r.ingredient_id, quantity: parseFloat(r.quantity), unit: r.unit || yieldUnit,
-      })));
+    const validPackaging = packagingRows.filter(r => r.ingredient_id && parseFloat(r.quantity) > 0);
+    const allIngredientRows = [
+      ...validIngredients.map(r => ({ recipe_id: recipeId, ingredient_id: r.ingredient_id, quantity: parseFloat(r.quantity), unit: r.unit || yieldUnit })),
+      ...validPackaging.map(r => ({ recipe_id: recipeId, ingredient_id: r.ingredient_id, quantity: parseFloat(r.quantity), unit: r.unit || 'pcs' })),
+    ];
+    if (allIngredientRows.length > 0) {
+      await supabase.from('recipe_ingredients').insert(allIngredientRows);
     }
 
     const validEquipment = equipmentRows.filter(r => r.equipment_id && parseFloat(r.uses_per_batch) > 0);
@@ -1022,13 +1159,19 @@
     $('produce-modal-title').textContent = `Produce — ${recipe.name}`;
     const linkedProduct = allProducts.find(p => p.recipe_id === recipe.id);
     $('produce-modal-sub').textContent = linkedProduct
-      ? `This will deduct materials and add stock to "${linkedProduct.name}" in Product Inventory.`
-      : 'This will deduct materials. No product is linked yet, so no product stock will be added.';
+      ? `Choose what this should update — deduct materials, add stock to "${linkedProduct.name}", or both.`
+      : 'No product is linked to this recipe yet, so there is nothing to add stock to — only the materials checkbox applies.';
     $('produce-batches').value = 1;
+    $('produce-deduct-materials').checked = true;
+    $('produce-add-product').checked = !!linkedProduct;
+    $('produce-add-product').disabled = !linkedProduct;
     hideMsg($('produce-msg'));
     updateProducePreview();
     $('produce-modal-overlay').classList.add('show');
   }
+  $('shortage-modal-close').addEventListener('click', () => $('shortage-modal-overlay').classList.remove('show'));
+  $('shortage-modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'shortage-modal-overlay') $('shortage-modal-overlay').classList.remove('show'); });
+
   $('produce-modal-close').addEventListener('click', () => $('produce-modal-overlay').classList.remove('show'));
   $('produce-modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'produce-modal-overlay') $('produce-modal-overlay').classList.remove('show'); });
   $('produce-batches').addEventListener('input', updateProducePreview);
@@ -1053,12 +1196,24 @@
     const batches = parseFloat($('produce-batches').value);
     if (!batches || batches <= 0) { showMsg(msg, 'Enter a valid number of batches.', 'error'); return; }
 
+    const deductMaterials = $('produce-deduct-materials').checked;
+    const addProduct = $('produce-add-product').checked;
+
+    if (!deductMaterials && !addProduct) {
+      showMsg(msg, 'Nothing selected — check at least one option, or close this without producing.', 'error');
+      return;
+    }
+
     const btn = $('produce-confirm-btn');
     btn.disabled = true; btn.textContent = 'Producing…';
 
     const linkedProduct = allProducts.find(p => p.recipe_id === produceTarget.id);
     const { error } = await supabase.rpc('fn_produce_recipe_batch', {
-      p_recipe_id: produceTarget.id, p_batches: batches, p_product_id: linkedProduct ? linkedProduct.id : null,
+      p_recipe_id: produceTarget.id,
+      p_batches: batches,
+      p_product_id: linkedProduct ? linkedProduct.id : null,
+      p_deduct_materials: deductMaterials,
+      p_add_product_stock: addProduct,
     });
 
     btn.disabled = false; btn.textContent = 'Produce & update stock';

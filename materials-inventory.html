@@ -275,6 +275,16 @@
               <label for="p-supplier">Supplier</label>
               <input type="text" id="p-supplier" />
             </div>
+            <div class="field">
+              <label for="p-category">Category</label>
+              <select id="p-category">
+                <option value="">— None —</option>
+                <option value="Production Materials">Production Materials</option>
+                <option value="Containers">Containers</option>
+                <option value="Packaging">Packaging</option>
+                <option value="Shipping Materials">Shipping Materials</option>
+              </select>
+            </div>
 
             <div class="qty-buttons" style="margin-top:4px;">
               <button type="button" class="cost-mode-btn selected" data-mode="auto">Auto-calculate cost</button>
@@ -308,10 +318,21 @@
         </div>
       </div>
 
+      <div style="margin-bottom:12px;">
+        <select id="category-filter" style="max-width:220px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;font-family:inherit;background:var(--card);">
+          <option value="">All categories</option>
+          <option value="Production Materials">Production Materials</option>
+          <option value="Containers">Containers</option>
+          <option value="Packaging">Packaging</option>
+          <option value="Shipping Materials">Shipping Materials</option>
+          <option value="__none__">No category set</option>
+        </select>
+      </div>
+
       <div class="card">
         <table>
           <thead>
-            <tr><th>Material</th><th>Unit</th><th>Cost/Unit</th><th>Supplier</th><th>Stock</th><th></th></tr>
+            <tr><th>Material</th><th>Category</th><th>Unit</th><th>Cost/Unit</th><th>Supplier</th><th>Stock</th><th></th></tr>
           </thead>
           <tbody id="product-tbody"></tbody>
         </table>
@@ -325,6 +346,16 @@
         <div class="page-head" style="margin-bottom:16px;">
           <p style="color:var(--muted);font-size:14px;margin:0;">Every stock change across all materials — additions, manual adjustments, and deductions from producing recipe batches.</p>
           <button class="btn btn-ghost btn-sm" id="refresh-history-btn">Refresh</button>
+        </div>
+        <div style="margin-bottom:12px;">
+          <select id="history-category-filter" style="max-width:220px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;font-family:inherit;background:var(--card);">
+            <option value="">All categories</option>
+            <option value="Production Materials">Production Materials</option>
+            <option value="Containers">Containers</option>
+            <option value="Packaging">Packaging</option>
+            <option value="Shipping Materials">Shipping Materials</option>
+            <option value="__none__">No category set</option>
+          </select>
         </div>
         <div class="card">
           <div id="all-history-list"></div>
@@ -407,6 +438,16 @@
           <label for="e-supplier">Supplier</label>
           <input type="text" id="e-supplier" />
         </div>
+      </div>
+      <div class="field">
+        <label for="e-category">Category</label>
+        <select id="e-category">
+          <option value="">— None —</option>
+          <option value="Production Materials">Production Materials</option>
+          <option value="Containers">Containers</option>
+          <option value="Packaging">Packaging</option>
+          <option value="Shipping Materials">Shipping Materials</option>
+        </select>
       </div>
 
       <div class="qty-buttons" style="margin-top:4px;">
@@ -507,7 +548,21 @@
     $('empty-state').style.display = 'none';
     products = data;
 
-    data.forEach((p) => {
+    const filterVal = $('category-filter').value;
+    const filtered = products.filter((p) => {
+      if (!filterVal) return true;
+      if (filterVal === '__none__') return !p.category;
+      return p.category === filterVal;
+    });
+
+    if (filtered.length === 0) {
+      $('empty-state').style.display = 'block';
+      $('empty-state').textContent = 'No materials match this category filter.';
+      return;
+    }
+    $('empty-state').style.display = 'none';
+
+    filtered.forEach((p) => {
       const stockClass = p.current_stock <= 0 ? 'stock-zero' : (p.reorder_level && p.current_stock <= p.reorder_level ? 'stock-low' : '');
       const tr = document.createElement('tr');
       const stockCell = bulkStockMode
@@ -515,6 +570,7 @@
         : `<span class="stock-badge ${stockClass}">${p.current_stock}</span>`;
       tr.innerHTML = `
         <td>${p.name}</td>
+        <td>${p.category ? `<span class="history-reason-badge manual">${p.category}</span>` : '—'}</td>
         <td>${p.unit || '—'}</td>
         <td>${p.cost_per_unit != null ? '₱' + Number(p.cost_per_unit).toFixed(4) : '—'}</td>
         <td>${p.supplier || '—'}</td>
@@ -636,6 +692,7 @@
     const name = $('p-name').value.trim();
     const unit = $('p-unit').value;
     const supplier = $('p-supplier').value.trim() || null;
+    const category = $('p-category').value || null;
 
     let cost_per_unit = 0;
     if (costMode === 'auto') {
@@ -648,7 +705,7 @@
 
     const { data: newIngredient, error } = await supabase
       .from('ingredients')
-      .insert({ business_id: businessId, name, unit, supplier, cost_per_unit })
+      .insert({ business_id: businessId, name, unit, supplier, category, cost_per_unit })
       .select()
       .single();
 
@@ -780,6 +837,7 @@
     $('e-name').value = p.name;
     $('e-unit').value = p.unit || 'pcs';
     $('e-supplier').value = p.supplier || '';
+    $('e-category').value = p.category || '';
     $('e-cost').value = p.cost_per_unit || '';
     $('e-pack-cost').value = '';
     $('e-pack-size').value = '';
@@ -800,6 +858,7 @@
     const name = $('e-name').value.trim();
     const unit = $('e-unit').value;
     const supplier = $('e-supplier').value.trim() || null;
+    const category = $('e-category').value || null;
 
     let cost_per_unit = editTarget.cost_per_unit || 0;
     if (editCostMode === 'auto') {
@@ -812,7 +871,7 @@
 
     const { error } = await supabase
       .from('ingredients')
-      .update({ name, unit, supplier, cost_per_unit })
+      .update({ name, unit, supplier, category, cost_per_unit })
       .eq('id', editTarget.id);
 
     btn.disabled = false; btn.textContent = 'Save changes';
@@ -977,6 +1036,8 @@
     });
   });
   $('refresh-history-btn').addEventListener('click', loadAllHistory);
+  $('history-category-filter').addEventListener('change', loadAllHistory);
+  $('category-filter').addEventListener('change', loadProducts);
 
   function fmtReason(reason){
     return { production: 'Production', manual: 'Manual', procurement: 'Procurement', adjustment: 'Adjustment' }[reason] || reason;
@@ -991,14 +1052,27 @@
       $('all-history-empty').style.display = 'block';
       return;
     }
+
+    const filterVal = $('history-category-filter').value;
+    const filtered = data.filter((h) => {
+      if (!filterVal) return true;
+      if (filterVal === '__none__') return !h.ingredient_category;
+      return h.ingredient_category === filterVal;
+    });
+
+    if (filtered.length === 0) {
+      $('all-history-empty').style.display = 'block';
+      $('all-history-empty').textContent = 'No stock changes match this category filter.';
+      return;
+    }
     $('all-history-empty').style.display = 'none';
 
-    data.forEach((h) => {
+    filtered.forEach((h) => {
       const row = document.createElement('div');
       row.className = 'history-feed-row';
       row.innerHTML = `
         <div>
-          <div><strong>${h.ingredient_name}</strong><span class="history-reason-badge ${h.reason}">${fmtReason(h.reason)}</span></div>
+          <div><strong>${h.ingredient_name}</strong><span class="history-reason-badge ${h.reason}">${fmtReason(h.reason)}</span>${h.ingredient_category ? `<span class="history-reason-badge manual">${h.ingredient_category}</span>` : ''}</div>
           <div class="history-feed-meta">${h.note ? h.note + ' · ' : ''}${fmtDate(h.created_at)}</div>
         </div>
         <div class="history-feed-qty ${h.change_qty >= 0 ? 'pos' : 'neg'}">${h.change_qty >= 0 ? '+' : ''}${h.change_qty}</div>
