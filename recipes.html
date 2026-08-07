@@ -22,11 +22,21 @@
   .splash .mark{font-family:'Fraunces',serif;font-weight:500;font-size:32px;opacity:.85;}
 
   .shell{display:none;min-height:100vh;grid-template-columns:250px 1fr;}
+  .shell > div{min-width:0;}
   .shell.show{display:grid;}
   @media (max-width:900px){ .shell.show{grid-template-columns:1fr;} }
 
   .sidebar{background:var(--sidebar-bg);color:var(--sidebar-ink);padding:26px 20px;display:flex;flex-direction:column;}
-  @media (max-width:900px){ .sidebar{display:none;} }
+  @media (max-width:900px){
+    .sidebar{display:none;}
+    .sidebar.mobile-open{
+      display:flex !important;position:fixed;inset:0 auto 0 0;width:min(280px,85vw);
+      z-index:200;box-shadow:4px 0 24px rgba(0,0,0,.25);
+    }
+  }
+  .mobile-backdrop{display:none;position:fixed;inset:0;background:rgba(15,10,20,.5);z-index:150;}
+  .mobile-backdrop.show{display:block;}
+  .hamburger-btn{background:none;border:none;color:var(--sidebar-ink);cursor:pointer;padding:4px;display:flex;align-items:center;}
 
   .biz-name{font-family:'Fraunces',serif;font-weight:600;font-size:19px;color:var(--sidebar-ink);margin:2px 0 26px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.12);line-height:1.25;text-align:center;}
   .sidebar-logo{width:56px;height:56px;border-radius:12px;object-fit:cover;margin:0 auto 10px;display:none;}
@@ -67,6 +77,8 @@
   .btn-ghost:hover{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-dark);}
 
   .card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:20px;}
+  .card table{overflow-x:auto;display:block;}
+  @media (max-width:700px){ .card table{white-space:nowrap;} }
   .card-pad{padding:20px 22px;}
 
   label{display:block;font-size:12.5px;font-weight:600;margin:0 0 6px;}
@@ -219,9 +231,15 @@
 
   <div>
     <div class="mobile-bar">
-      <span class="name">Athena</span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="hamburger-btn" id="mobile-menu-btn" aria-label="Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <span class="name">Athena</span>
+      </div>
       <button class="signout-btn" id="sign-out-mobile" style="width:auto;">Sign out</button>
     </div>
+    <div class="mobile-backdrop" id="mobile-backdrop"></div>
 
     <main>
       <div class="page-head">
@@ -330,6 +348,18 @@
               <div id="tier-rows-wrap" style="display:none;">
                 <div id="tier-rows-list"></div>
                 <button type="button" class="btn btn-ghost btn-sm" id="add-tier-row-btn">+ Add price tier</button>
+              </div>
+
+              <div class="toggle-row">
+                <label class="switch"><input type="checkbox" id="add-initial-stock-toggle" /><span class="switch-track"></span></label>
+                <label for="add-initial-stock-toggle" style="margin:0;font-size:13.5px;">Also produce initial stock now</label>
+              </div>
+              <div id="initial-stock-fields" style="display:none;">
+                <div class="field">
+                  <label for="initial-stock-batches">Number of batches</label>
+                  <input type="number" id="initial-stock-batches" value="1" min="0.01" step="0.01" />
+                </div>
+                <p class="hint" style="margin:-6px 0 14px;color:var(--muted);font-size:12.5px;">This deducts materials from Materials Inventory and adds the produced stock to Product Inventory, right after saving.</p>
               </div>
             </div>
 
@@ -693,6 +723,10 @@
     $('tier-rows-wrap').style.display = 'none';
     if (linkedProduct) loadExistingTiers(linkedProduct.id);
 
+    $('add-initial-stock-toggle').checked = false;
+    $('initial-stock-fields').style.display = 'none';
+    $('initial-stock-batches').value = 1;
+
     renderIngredientRows();
     renderPackagingRows();
     renderEquipmentRowsInEditor();
@@ -1040,6 +1074,9 @@
     tierRows.push({ min_qty: '', max_qty: '', price: '' });
     renderTierRows();
   });
+  $('add-initial-stock-toggle').addEventListener('change', (e) => {
+    $('initial-stock-fields').style.display = e.target.checked ? 'block' : 'none';
+  });
 
   function renderTierRows(){
     const wrap = $('tier-rows-list');
@@ -1146,9 +1183,25 @@
       await supabase.from('products').update({ recipe_id: null }).eq('id', linkedProduct.id);
     }
 
+    const addInitialStock = addToPos && $('add-initial-stock-toggle').checked && linkedProduct;
+    let produceFailed = false;
+    if (addInitialStock) {
+      const batches = parseFloat($('initial-stock-batches').value) || 0;
+      if (batches > 0) {
+        const { error: produceError } = await supabase.rpc('fn_produce_recipe_batch', {
+          p_recipe_id: recipeId, p_batches: batches, p_product_id: linkedProduct.id,
+          p_deduct_materials: true, p_add_product_stock: true,
+        });
+        if (produceError) {
+          produceFailed = true;
+          showMsg(msg, 'Item saved, but producing initial stock failed: ' + produceError.message, 'error');
+        }
+      }
+    }
+
     btn.disabled = false; btn.textContent = 'Save Item';
-    closeRecipeEditor();
-    await Promise.all([loadProductsList(), loadRecipes()]);
+    if (!produceFailed) closeRecipeEditor();
+    await Promise.all([loadProductsList(), loadRecipes(), loadMaterials()]);
   });
 
   // ---------------- Produce batch ----------------
@@ -1373,6 +1426,20 @@
 
   $('sign-out').addEventListener('click', signOutAndRedirect);
   $('sign-out-mobile').addEventListener('click', signOutAndRedirect);
+
+  const sidebarEl = document.querySelector('.sidebar');
+  const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+  const mobileBackdrop = document.getElementById('mobile-backdrop');
+  function closeMobileNav(){
+    sidebarEl.classList.remove('mobile-open');
+    mobileBackdrop.classList.remove('show');
+  }
+  if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', () => {
+    sidebarEl.classList.add('mobile-open');
+    mobileBackdrop.classList.add('show');
+  });
+  if (mobileBackdrop) mobileBackdrop.addEventListener('click', closeMobileNav);
+  document.querySelectorAll('.sidebar a.nav-item').forEach((el) => el.addEventListener('click', closeMobileNav));
 
   init();
 </script>
