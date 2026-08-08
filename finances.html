@@ -287,6 +287,7 @@
           <div class="summary-card net">
             <div class="label">Net Profit</div>
             <div class="value" id="sum-net">₱0.00</div>
+            <div id="margin-display" style="margin-top:6px;font-size:12.5px;"></div>
           </div>
         </div>
 
@@ -517,6 +518,21 @@
   $('range-end').addEventListener('change', applyPreset);
 
   // ---------------- Overview ----------------
+  function updateMarginDisplay(totalIncome, net){
+    const el = $('margin-display');
+    if (!totalIncome || totalIncome <= 0) { el.textContent = ''; return; }
+
+    const marginPct = (net / totalIncome) * 100;
+    let label, color;
+    if (marginPct < 0) { label = 'Loss'; color = 'var(--error)'; }
+    else if (marginPct < 10) { label = 'Low'; color = 'var(--warn, #9A6B12)'; }
+    else if (marginPct < 20) { label = 'Fair'; color = 'var(--warn, #9A6B12)'; }
+    else if (marginPct < 35) { label = 'Good'; color = 'var(--success)'; }
+    else { label = 'Healthy'; color = 'var(--success)'; }
+
+    el.innerHTML = `Margin: <strong>${marginPct.toFixed(1)}%</strong> — <span style="color:${color};font-weight:700;">${label}</span>`;
+  }
+
   async function loadOverview(){
     const { data: summaryRows } = await supabase.rpc('fn_get_finance_summary', { p_start: rangeStart, p_end: rangeEnd });
     const summary = (summaryRows && summaryRows[0]) || { pos_income: 0, other_income: 0, total_expenses: 0 };
@@ -527,6 +543,7 @@
     $('sum-income').textContent = peso(totalIncome);
     $('sum-expenses').textContent = peso(summary.total_expenses);
     $('sum-net').textContent = peso(net);
+    updateMarginDisplay(totalIncome, net);
     $('breakdown-pos').textContent = peso(summary.pos_income);
     $('breakdown-other-income').textContent = peso(summary.other_income);
 
