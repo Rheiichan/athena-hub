@@ -138,7 +138,6 @@
       </a>
       <a class="nav-item" href="procurement.html">
         <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h10v9H3z"/><path d="M13 10h4l4 3.5V16h-8"/><circle cx="7" cy="18.5" r="1.6"/><circle cx="17.5" cy="18.5" r="1.6"/></svg>Procurement</span>
-        <span class="soon">Soon</span>
       </a>
 
       <p class="nav-section-label">Operate</p>
@@ -270,7 +269,7 @@
     const grid = $('module-grid');
     grid.innerHTML = '';
     MODULES.forEach((m) => {
-      const isReady = ['settings', 'product-inventory', 'ingredient-inventory', 'recipes', 'pos', 'finances'].includes(m.key);
+      const isReady = ['settings', 'product-inventory', 'ingredient-inventory', 'recipes', 'pos', 'finances', 'procurement'].includes(m.key);
       const card = document.createElement(m.href ? 'a' : 'div');
       card.className = 'module-card ' + (isReady ? 'enabled' : 'disabled');
       if (m.href) card.href = m.href;

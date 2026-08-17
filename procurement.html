@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Athena — Finances</title>
+<title>Athena — Procurement</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -144,6 +144,23 @@
   .history-reason-badge.procurement{background:var(--success-bg);color:var(--success);}
   .history-reason-badge.adjustment{background:var(--warn-bg);color:var(--warn);}
 
+  .row-item{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;}
+  .row-item select, .row-item input{margin-bottom:0;}
+  .row-remove{background:none;border:none;color:var(--error);cursor:pointer;font-size:18px;line-height:1;padding:4px 8px;}
+
+  .po-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:12px;}
+  .po-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+  .po-card h3{font-family:Arial,sans-serif;font-weight:700;font-size:16px;margin:0 0 4px;}
+  .po-card .meta{font-size:12.5px;color:var(--muted);}
+
+  .status-badge{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:3px 10px;border-radius:99px;}
+  .status-badge.draft{background:var(--line);color:var(--muted);}
+  .status-badge.ordered{background:var(--warn-bg);color:var(--warn);}
+  .status-badge.received{background:var(--success-bg);color:var(--success);}
+  .status-badge.cancelled{background:var(--error-bg);color:var(--error);}
+  .summary-box{background:var(--accent-soft);border-radius:10px;padding:16px 18px;}
+  .summary-line.total{font-weight:700;font-size:15px;}
+
   .summary-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:22px;}
   .summary-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;}
   .summary-card .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;}
@@ -200,9 +217,9 @@
       <a class="nav-item" href="materials-inventory.html">
         <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M9.5 3v3.3L6.8 9.4A3 3 0 0 0 6 11.4V19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-7.6a3 3 0 0 0-.8-2L14.5 6.3V3"/></svg>Materials Inventory</span>
       </a>
-      <a class="nav-item" href="procurement.html">
+      <div class="nav-item active">
         <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h10v9H3z"/><path d="M13 10h4l4 3.5V16h-8"/><circle cx="7" cy="18.5" r="1.6"/><circle cx="17.5" cy="18.5" r="1.6"/></svg>Procurement</span>
-      </a>
+      </div>
 
       <p class="nav-section-label">Operate</p>
       <a class="nav-item" href="scheduler.html">
@@ -213,9 +230,9 @@
         <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3.2h6a1 1 0 0 1 1 1V5.5H8V4.2a1 1 0 0 1 1-1Z"/><path d="M9 13l2 2 4-4.5"/></svg>Order Release Tracker</span>
         <span class="soon">Soon</span>
       </a>
-      <div class="nav-item active">
+      <a class="nav-item" href="finances.html">
         <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V11"/><path d="M10 20V4"/><path d="M16 20v-6.5"/><path d="M2 20h20"/></svg>Finances</span>
-      </div>
+      </a>
       <a class="nav-item" href="employees.html">
         <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><circle cx="17.5" cy="9" r="2.3"/><path d="M15 20a4.5 4.5 0 0 1 6.5-4"/></svg>Employees</span>
         <span class="soon">Soon</span>
@@ -249,156 +266,66 @@
     <main>
       <div class="page-head">
         <div>
-          <h1>Finances</h1>
-          <p>Income, expenses, and the numbers behind them.</p>
+          <h1>Procurement</h1>
+          <p>Order and receive materials from suppliers.</p>
         </div>
+        <button class="btn" id="toggle-add-po-btn">+ New Purchase Order</button>
       </div>
 
-      <div class="tabs">
-        <div class="tab active" data-tab="overview">Overview</div>
-        <div class="tab" data-tab="expenses">Expenses</div>
-        <div class="tab" data-tab="income">Income</div>
-      </div>
+      <div class="card add-form" id="po-editor-card">
+        <div class="card-pad">
+          <h3 id="po-editor-title" style="font-family:Arial,sans-serif;font-weight:700;font-size:16px;margin:0 0 14px;">New purchase order</h3>
+          <div id="po-msg" class="msg"></div>
 
-      <div class="date-range-bar">
-        <select id="range-preset">
-          <option value="this_month">This Month</option>
-          <option value="last_month">Last Month</option>
-          <option value="this_year">This Year</option>
-          <option value="custom">Custom Range</option>
-        </select>
-        <input type="date" id="range-start" style="display:none;" />
-        <span id="range-to-label" style="display:none;color:var(--muted);font-size:13px;">to</span>
-        <input type="date" id="range-end" style="display:none;" />
-      </div>
-
-      <!-- OVERVIEW TAB -->
-      <div class="tab-panel active" id="panel-overview">
-        <div class="summary-cards">
-          <div class="summary-card income">
-            <div class="label">Total Income</div>
-            <div class="value" id="sum-income">₱0.00</div>
-          </div>
-          <div class="summary-card expense">
-            <div class="label">Total Expenses</div>
-            <div class="value" id="sum-expenses">₱0.00</div>
-          </div>
-          <div class="summary-card net">
-            <div class="label">Net Profit</div>
-            <div class="value" id="sum-net">₱0.00</div>
-            <div id="margin-display" style="margin-top:6px;font-size:12.5px;"></div>
-          </div>
-        </div>
-
-        <div class="card card-pad" style="margin-bottom:20px;">
-          <p style="margin:0 0 4px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;">Income breakdown</p>
-          <div class="summary-line" style="padding:6px 0;"><span>POS Sales</span><span id="breakdown-pos">₱0.00</span></div>
-          <div class="summary-line" style="padding:6px 0;"><span>Other Income</span><span id="breakdown-other-income">₱0.00</span></div>
-        </div>
-
-        <div class="card card-pad">
-          <p style="margin:0 0 10px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;">Expenses by category</p>
-          <div id="expense-breakdown-list"></div>
-          <div class="empty-state" id="expense-breakdown-empty" style="display:none;">No expenses recorded in this range.</div>
-        </div>
-      </div>
-
-      <!-- EXPENSES TAB -->
-      <div class="tab-panel" id="panel-expenses">
-        <div class="page-head" style="margin-bottom:16px;">
-          <div></div>
-          <button class="btn" id="toggle-add-expense-btn">+ Add Expense</button>
-        </div>
-
-        <div class="card add-form" id="expense-form-card">
-          <div class="card-pad">
-            <h3 style="font-family:Arial,sans-serif;font-weight:700;font-size:16px;margin:0 0 14px;">New expense</h3>
-            <div id="expense-msg" class="msg"></div>
-            <div class="field-row">
-              <div class="field">
-                <label for="exp-category">Category</label>
-                <select id="exp-category">
-                  <option value="Rent">Rent</option>
-                  <option value="Utilities">Utilities</option>
-                  <option value="Materials/Supplies">Materials/Supplies</option>
-                  <option value="Packaging">Packaging</option>
-                  <option value="Shipping">Shipping</option>
-                  <option value="Marketing">Marketing</option>
-                  <option value="Salaries/Labor">Salaries/Labor</option>
-                  <option value="Equipment">Equipment</option>
-                  <option value="Fees & Charges">Fees &amp; Charges</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="exp-amount">Amount</label>
-                <input type="number" id="exp-amount" step="0.01" min="0" />
-              </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="po-supplier">Supplier</label>
+              <input type="text" id="po-supplier" list="supplier-suggestions" placeholder="e.g. Local Supplier" />
+              <datalist id="supplier-suggestions"></datalist>
             </div>
             <div class="field">
-              <label for="exp-date">Date</label>
-              <input type="date" id="exp-date" />
+              <label for="po-order-date">Order date</label>
+              <input type="date" id="po-order-date" />
             </div>
-            <div class="field">
-              <label for="exp-note">Note (optional)</label>
-              <textarea id="exp-note" rows="2"></textarea>
-            </div>
-            <button type="button" class="btn" id="save-expense-btn">Add expense</button>
-            <button type="button" class="btn btn-ghost" id="cancel-expense-btn" style="margin-left:8px;">Cancel</button>
           </div>
-        </div>
+          <div class="field">
+            <label for="po-notes">Notes (optional)</label>
+            <textarea id="po-notes" rows="2"></textarea>
+          </div>
 
-        <div class="card">
-          <div id="expense-list"></div>
-          <div class="empty-state" id="expense-list-empty" style="display:none;">No expenses recorded yet.</div>
+          <h4 style="font-size:13px;margin:16px 0 8px;">Items</h4>
+          <div id="po-item-rows"></div>
+          <button type="button" class="btn btn-ghost btn-sm" id="add-po-item-row-btn">+ Add material</button>
+
+          <div class="summary-box" id="po-cost-summary" style="margin-top:16px;">
+            <div class="summary-line total"><span>Total cost</span><span id="po-total-cost">₱0.00</span></div>
+          </div>
+
+          <div style="margin-top:20px;">
+            <button type="button" class="btn" id="save-po-btn">Save as Draft</button>
+            <button type="button" class="btn btn-ghost" id="cancel-po-btn" style="margin-left:8px;">Cancel</button>
+          </div>
         </div>
       </div>
 
-      <!-- INCOME TAB -->
-      <div class="tab-panel" id="panel-income">
-        <div class="page-head" style="margin-bottom:16px;">
-          <div><p style="color:var(--muted);font-size:14px;margin:0;">POS sales are added automatically. Use this to log other income (refunds received, investment, etc.)</p></div>
-          <button class="btn" id="toggle-add-income-btn">+ Add Other Income</button>
-        </div>
-
-        <div class="card add-form" id="income-form-card">
-          <div class="card-pad">
-            <h3 style="font-family:Arial,sans-serif;font-weight:700;font-size:16px;margin:0 0 14px;">New income entry</h3>
-            <div id="income-msg" class="msg"></div>
-            <div class="field-row">
-              <div class="field">
-                <label for="inc-category">Source</label>
-                <select id="inc-category">
-                  <option value="Refund">Refund</option>
-                  <option value="Investment">Investment</option>
-                  <option value="Loan">Loan</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="inc-amount">Amount</label>
-                <input type="number" id="inc-amount" step="0.01" min="0" />
-              </div>
-            </div>
-            <div class="field">
-              <label for="inc-date">Date</label>
-              <input type="date" id="inc-date" />
-            </div>
-            <div class="field">
-              <label for="inc-note">Note (optional)</label>
-              <textarea id="inc-note" rows="2"></textarea>
-            </div>
-            <button type="button" class="btn" id="save-income-btn">Add income</button>
-            <button type="button" class="btn btn-ghost" id="cancel-income-btn" style="margin-left:8px;">Cancel</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <div id="income-list"></div>
-          <div class="empty-state" id="income-list-empty" style="display:none;">No other income recorded yet.</div>
-        </div>
-      </div>
+      <div id="po-list"></div>
+      <div class="empty-state" id="po-list-empty" style="display:none;">No purchase orders yet — create your first one above.</div>
     </main>
+  </div>
+</div>
+
+<!-- VIEW ORDER MODAL (read-only, for ordered/received/cancelled) -->
+<div class="modal-overlay" id="view-po-modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="view-po-modal-close">&times;</button>
+    <h3 id="view-po-title">Purchase order</h3>
+    <p class="sub" id="view-po-sub"></p>
+    <div id="view-po-items"></div>
+    <div class="summary-box" style="margin-top:12px;">
+      <div class="summary-line total"><span>Total cost</span><span id="view-po-total"></span></div>
+    </div>
+    <div id="view-po-msg" class="msg" style="margin-top:10px;"></div>
+    <div id="view-po-actions" style="margin-top:16px;"></div>
   </div>
 </div>
 
@@ -454,271 +381,257 @@
   function peso(n){ return '₱' + (Number(n) || 0).toFixed(2); }
 
   let businessId = null;
-  let rangeStart = null;
-  let rangeEnd = null;
+  let allMaterials = [];
+  let orders = [];
+  let itemRows = [];       // working state while editing: {ingredient_id, quantity, unit_cost}
+  let editingOrderId = null;
 
-  // ---------------- Tabs ----------------
-  document.querySelectorAll('.tab').forEach((tab) => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      tab.classList.add('active');
-      $('panel-' + tab.dataset.tab).classList.add('active');
-      if (tab.dataset.tab === 'overview') loadOverview();
-      if (tab.dataset.tab === 'expenses') loadExpenses();
-      if (tab.dataset.tab === 'income') loadIncome();
-    });
-  });
-
-  // ---------------- Date range ----------------
-  function fmtISO(d){ return d.toISOString().slice(0, 10); }
-
-  function computeRange(preset){
-    const now = new Date();
-    if (preset === 'this_month') {
-      return [new Date(now.getFullYear(), now.getMonth(), 1), new Date(now.getFullYear(), now.getMonth() + 1, 0)];
-    }
-    if (preset === 'last_month') {
-      return [new Date(now.getFullYear(), now.getMonth() - 1, 1), new Date(now.getFullYear(), now.getMonth(), 0)];
-    }
-    if (preset === 'this_year') {
-      return [new Date(now.getFullYear(), 0, 1), new Date(now.getFullYear(), 11, 31)];
-    }
-    return [now, now];
+  // ---------------- Load data ----------------
+  async function loadMaterials(){
+    const { data } = await supabase.rpc('fn_list_ingredients_with_stock');
+    allMaterials = data || [];
+    const suggestions = [...new Set(allMaterials.map(m => m.supplier).filter(Boolean))];
+    $('supplier-suggestions').innerHTML = suggestions.map(s => `<option value="${s}"></option>`).join('');
   }
 
-  function applyPreset(){
-    const preset = $('range-preset').value;
-    const isCustom = preset === 'custom';
-    $('range-start').style.display = isCustom ? 'inline-block' : 'none';
-    $('range-to-label').style.display = isCustom ? 'inline' : 'none';
-    $('range-end').style.display = isCustom ? 'inline-block' : 'none';
-
-    if (!isCustom) {
-      const [s, e] = computeRange(preset);
-      rangeStart = fmtISO(s);
-      rangeEnd = fmtISO(e);
-    } else {
-      rangeStart = $('range-start').value || fmtISO(new Date());
-      rangeEnd = $('range-end').value || fmtISO(new Date());
-    }
-    reloadActiveTab();
+  async function loadOrders(){
+    const { data } = await supabase.rpc('fn_list_procurement_orders');
+    orders = data || [];
+    renderOrderList();
   }
 
-  function reloadActiveTab(){
-    const activeTab = document.querySelector('.tab.active').dataset.tab;
-    if (activeTab === 'overview') loadOverview();
-    if (activeTab === 'expenses') loadExpenses();
-    if (activeTab === 'income') loadIncome();
-  }
-
-  $('range-preset').addEventListener('change', applyPreset);
-  $('range-start').addEventListener('change', applyPreset);
-  $('range-end').addEventListener('change', applyPreset);
-
-  // ---------------- Overview ----------------
-  function updateMarginDisplay(totalIncome, net){
-    const el = $('margin-display');
-    if (!totalIncome || totalIncome <= 0) { el.textContent = ''; return; }
-
-    const marginPct = (net / totalIncome) * 100;
-    let label, color;
-    if (marginPct < 0) { label = 'Loss'; color = 'var(--error)'; }
-    else if (marginPct < 10) { label = 'Low'; color = 'var(--warn, #9A6B12)'; }
-    else if (marginPct < 20) { label = 'Fair'; color = 'var(--warn, #9A6B12)'; }
-    else if (marginPct < 35) { label = 'Good'; color = 'var(--success)'; }
-    else { label = 'Healthy'; color = 'var(--success)'; }
-
-    el.innerHTML = `Margin: <strong>${marginPct.toFixed(1)}%</strong> — <span style="color:${color};font-weight:700;">${label}</span>`;
-  }
-
-  async function loadOverview(){
-    const { data: summaryRows } = await supabase.rpc('fn_get_finance_summary', { p_start: rangeStart, p_end: rangeEnd });
-    const summary = (summaryRows && summaryRows[0]) || { pos_income: 0, other_income: 0, total_expenses: 0 };
-
-    const totalIncome = Number(summary.pos_income) + Number(summary.other_income);
-    const net = totalIncome - Number(summary.total_expenses);
-
-    $('sum-income').textContent = peso(totalIncome);
-    $('sum-expenses').textContent = peso(summary.total_expenses);
-    $('sum-net').textContent = peso(net);
-    updateMarginDisplay(totalIncome, net);
-    $('breakdown-pos').textContent = peso(summary.pos_income);
-    $('breakdown-other-income').textContent = peso(summary.other_income);
-
-    const { data: breakdown } = await supabase.rpc('fn_get_expense_breakdown', { p_start: rangeStart, p_end: rangeEnd });
-    const wrap = $('expense-breakdown-list');
+  function renderOrderList(){
+    const wrap = $('po-list');
     wrap.innerHTML = '';
-    if (!breakdown || breakdown.length === 0) {
-      $('expense-breakdown-empty').style.display = 'block';
+    if (orders.length === 0) {
+      $('po-list-empty').style.display = 'block';
       return;
     }
-    $('expense-breakdown-empty').style.display = 'none';
-    const maxAmt = Math.max(...breakdown.map(b => Number(b.total)));
-    breakdown.forEach((b) => {
-      const pct = maxAmt > 0 ? (Number(b.total) / maxAmt) * 100 : 0;
-      const row = document.createElement('div');
-      row.className = 'breakdown-row';
-      row.innerHTML = `
-        <div class="breakdown-label">${b.category}</div>
-        <div class="breakdown-bar-track"><div class="breakdown-bar-fill" style="width:${pct}%;"></div></div>
-        <div class="breakdown-amount">${peso(b.total)}</div>
-      `;
-      wrap.appendChild(row);
-    });
-  }
+    $('po-list-empty').style.display = 'none';
 
-  // ---------------- Expenses ----------------
-  $('toggle-add-expense-btn').addEventListener('click', () => {
-    $('exp-date').value = fmtISO(new Date());
-    $('expense-form-card').classList.toggle('show');
-  });
-  $('cancel-expense-btn').addEventListener('click', () => {
-    $('expense-form-card').classList.remove('show');
-  });
-
-  $('save-expense-btn').addEventListener('click', async () => {
-    const msg = $('expense-msg');
-    hideMsg(msg);
-    const amount = parseFloat($('exp-amount').value);
-    if (!amount || amount <= 0) { showMsg(msg, 'Enter a valid amount.', 'error'); return; }
-
-    const btn = $('save-expense-btn');
-    btn.disabled = true; btn.textContent = 'Saving…';
-
-    const { error } = await supabase.from('finance_entries').insert({
-      business_id: businessId, entry_type: 'expense',
-      category: $('exp-category').value, amount,
-      entry_date: $('exp-date').value || fmtISO(new Date()),
-      note: $('exp-note').value.trim() || null,
-    });
-
-    btn.disabled = false; btn.textContent = 'Add expense';
-
-    if (error) { showMsg(msg, 'Could not save: ' + error.message, 'error'); return; }
-
-    $('exp-amount').value = '';
-    $('exp-note').value = '';
-    $('expense-form-card').classList.remove('show');
-    loadExpenses();
-  });
-
-  async function loadExpenses(){
-    const { data } = await supabase.rpc('fn_list_finance_entries', { p_entry_type: 'expense', p_limit: 200 });
-    const wrap = $('expense-list');
-    wrap.innerHTML = '';
-    const filtered = (data || []).filter(e => e.entry_date >= rangeStart && e.entry_date <= rangeEnd);
-    if (filtered.length === 0) {
-      $('expense-list-empty').style.display = 'block';
-      return;
-    }
-    $('expense-list-empty').style.display = 'none';
-    filtered.forEach((e) => {
-      const row = document.createElement('div');
-      row.className = 'entry-row';
-      row.innerHTML = `
-        <div>
-          <div><strong>${e.category || 'Uncategorized'}</strong></div>
-          <div style="color:var(--muted);font-size:11.5px;">${e.note ? e.note + ' · ' : ''}${e.entry_date}</div>
+    orders.forEach((po) => {
+      const card = document.createElement('div');
+      card.className = 'po-card';
+      const dateLabel = po.status === 'received' ? `Received ${fmtDate(po.received_at)}`
+        : po.status === 'ordered' ? `Ordered ${fmtDate(po.ordered_at)}`
+        : `Created ${fmtDate(po.created_at)}`;
+      card.innerHTML = `
+        <div class="po-card-head">
+          <div>
+            <h3>${po.supplier || 'Unnamed supplier'} <span class="status-badge ${po.status}">${po.status}</span></h3>
+            <div class="meta">${dateLabel} · ${peso(po.total_cost)}</div>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div class="entry-amount expense">-${peso(e.amount)}</div>
-          <button type="button" class="entry-delete-btn" data-id="${e.id}" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:16px;">&times;</button>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+          ${po.status === 'draft' ? `
+            <button class="btn btn-sm btn-ghost edit-po-btn">Edit</button>
+            <button class="btn btn-sm btn-ghost mark-ordered-btn">Mark as Ordered</button>
+            <button class="btn btn-sm btn-ghost delete-po-btn" style="color:var(--error);">Delete</button>
+          ` : `
+            <button class="btn btn-sm btn-ghost view-po-btn">View</button>
+          `}
         </div>
       `;
-      row.querySelector('.entry-delete-btn').addEventListener('click', () => deleteEntry(e.id, loadExpenses));
-      wrap.appendChild(row);
-    });
-  }
-
-  // ---------------- Income ----------------
-  $('toggle-add-income-btn').addEventListener('click', () => {
-    $('inc-date').value = fmtISO(new Date());
-    $('income-form-card').classList.toggle('show');
-  });
-  $('cancel-income-btn').addEventListener('click', () => {
-    $('income-form-card').classList.remove('show');
-  });
-
-  $('save-income-btn').addEventListener('click', async () => {
-    const msg = $('income-msg');
-    hideMsg(msg);
-    const amount = parseFloat($('inc-amount').value);
-    if (!amount || amount <= 0) { showMsg(msg, 'Enter a valid amount.', 'error'); return; }
-
-    const btn = $('save-income-btn');
-    btn.disabled = true; btn.textContent = 'Saving…';
-
-    const { error } = await supabase.from('finance_entries').insert({
-      business_id: businessId, entry_type: 'income',
-      category: $('inc-category').value, amount,
-      entry_date: $('inc-date').value || fmtISO(new Date()),
-      note: $('inc-note').value.trim() || null,
-    });
-
-    btn.disabled = false; btn.textContent = 'Add income';
-
-    if (error) { showMsg(msg, 'Could not save: ' + error.message, 'error'); return; }
-
-    $('inc-amount').value = '';
-    $('inc-note').value = '';
-    $('income-form-card').classList.remove('show');
-    loadIncome();
-  });
-
-  async function loadIncome(){
-    const [{ data: entries }, { data: posSales }] = await Promise.all([
-      supabase.rpc('fn_list_finance_entries', { p_entry_type: 'income', p_limit: 200 }),
-      supabase.rpc('fn_list_pos_transactions', { p_limit: 200 }),
-    ]);
-
-    const wrap = $('income-list');
-    wrap.innerHTML = '';
-
-    const manualRows = (entries || [])
-      .filter(e => e.entry_date >= rangeStart && e.entry_date <= rangeEnd)
-      .map(e => ({ kind: 'manual', date: e.entry_date, label: e.category || 'Other Income', note: e.note, amount: e.amount, id: e.id }));
-
-    const posRows = (posSales || [])
-      .filter(t => t.sale_date >= rangeStart && t.sale_date <= rangeEnd)
-      .map(t => ({ kind: 'pos', date: t.sale_date, label: 'POS Sale' + (t.order_number ? ' — ' + t.order_number : ''), note: t.customer_name, amount: t.total_amount }));
-
-    const combined = [...manualRows, ...posRows].sort((a, b) => b.date.localeCompare(a.date));
-
-    if (combined.length === 0) {
-      $('income-list-empty').style.display = 'block';
-      return;
-    }
-    $('income-list-empty').style.display = 'none';
-
-    combined.forEach((row) => {
-      const el = document.createElement('div');
-      el.className = 'entry-row';
-      el.innerHTML = `
-        <div>
-          <div><strong>${row.label}</strong></div>
-          <div style="color:var(--muted);font-size:11.5px;">${row.note ? row.note + ' · ' : ''}${row.date}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div class="entry-amount income">+${peso(row.amount)}</div>
-          ${row.kind === 'manual' ? `<button type="button" class="entry-delete-btn" data-id="${row.id}" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:16px;">&times;</button>` : ''}
-        </div>
-      `;
-      if (row.kind === 'manual') {
-        el.querySelector('.entry-delete-btn').addEventListener('click', () => deleteEntry(row.id, loadIncome));
+      if (po.status === 'draft') {
+        card.querySelector('.edit-po-btn').addEventListener('click', () => openPoEditor(po));
+        card.querySelector('.mark-ordered-btn').addEventListener('click', () => markAsOrdered(po));
+        card.querySelector('.delete-po-btn').addEventListener('click', () => deletePo(po));
+      } else {
+        card.querySelector('.view-po-btn').addEventListener('click', () => openViewModal(po));
       }
-      wrap.appendChild(el);
+      wrap.appendChild(card);
     });
   }
 
-  // ---------------- Shared delete ----------------
-  async function deleteEntry(id, reload){
-    const ok = confirm('Delete this entry? This cannot be undone.');
+  // ---------------- Editor (draft orders) ----------------
+  $('toggle-add-po-btn').addEventListener('click', () => openPoEditor(null));
+  $('cancel-po-btn').addEventListener('click', () => $('po-editor-card').classList.remove('show'));
+
+  function openPoEditor(po){
+    editingOrderId = po ? po.id : null;
+    $('po-editor-title').textContent = po ? `Edit — ${po.supplier || 'Unnamed supplier'}` : 'New purchase order';
+    hideMsg($('po-msg'));
+    $('po-supplier').value = po ? (po.supplier || '') : '';
+    $('po-order-date').value = po ? (po.created_at || '').slice(0, 10) : new Date().toISOString().slice(0, 10);
+    $('po-notes').value = po ? (po.notes || '') : '';
+
+    if (po) {
+      loadItemsForEdit(po.id);
+    } else {
+      itemRows = [];
+      renderPoItemRows();
+    }
+
+    $('po-editor-card').classList.add('show');
+    $('po-editor-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function loadItemsForEdit(orderId){
+    const { data } = await supabase.rpc('fn_get_procurement_order_items', { p_order_id: orderId });
+    itemRows = (data || []).map(i => ({ ingredient_id: i.ingredient_id, quantity: i.quantity, unit_cost: i.unit_cost }));
+    renderPoItemRows();
+  }
+
+  $('add-po-item-row-btn').addEventListener('click', () => {
+    itemRows.push({ ingredient_id: '', quantity: '', unit_cost: '' });
+    renderPoItemRows();
+  });
+
+  function renderPoItemRows(){
+    const wrap = $('po-item-rows');
+    wrap.innerHTML = '';
+    itemRows.forEach((row, idx) => {
+      const div = document.createElement('div');
+      div.className = 'row-item';
+      div.innerHTML = `
+        <select class="poi-material" data-idx="${idx}">
+          <option value="">Select material…</option>
+          ${allMaterials.map(m => `<option value="${m.id}" ${m.id === row.ingredient_id ? 'selected' : ''}>${m.name}</option>`).join('')}
+        </select>
+        <input type="number" class="poi-qty" data-idx="${idx}" step="0.0001" min="0" placeholder="qty" value="${row.quantity ?? ''}" />
+        <input type="number" class="poi-cost" data-idx="${idx}" step="0.0001" min="0" placeholder="unit cost" value="${row.unit_cost ?? ''}" />
+        <button type="button" class="row-remove" data-idx="${idx}">&times;</button>
+      `;
+      wrap.appendChild(div);
+    });
+
+    wrap.querySelectorAll('.poi-material').forEach((el) => el.addEventListener('change', (e) => {
+      const idx = +e.target.dataset.idx;
+      itemRows[idx].ingredient_id = e.target.value;
+      const mat = allMaterials.find(m => m.id === e.target.value);
+      if (mat && !itemRows[idx].unit_cost) itemRows[idx].unit_cost = mat.cost_per_unit || '';
+      renderPoItemRows();
+    }));
+    wrap.querySelectorAll('.poi-qty').forEach((el) => el.addEventListener('input', (e) => {
+      itemRows[+e.target.dataset.idx].quantity = e.target.value;
+      updatePoTotal();
+    }));
+    wrap.querySelectorAll('.poi-cost').forEach((el) => el.addEventListener('input', (e) => {
+      itemRows[+e.target.dataset.idx].unit_cost = e.target.value;
+      updatePoTotal();
+    }));
+    wrap.querySelectorAll('.row-remove').forEach((el) => el.addEventListener('click', (e) => {
+      itemRows.splice(+e.target.dataset.idx, 1);
+      renderPoItemRows();
+    }));
+
+    updatePoTotal();
+  }
+
+  function updatePoTotal(){
+    const total = itemRows.reduce((sum, r) => sum + (parseFloat(r.quantity) || 0) * (parseFloat(r.unit_cost) || 0), 0);
+    $('po-total-cost').textContent = peso(total);
+  }
+
+  $('save-po-btn').addEventListener('click', async () => {
+    const msg = $('po-msg');
+    hideMsg(msg);
+    const btn = $('save-po-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    const supplier = $('po-supplier').value.trim() || null;
+    const notes = $('po-notes').value.trim() || null;
+
+    let orderId = editingOrderId;
+    if (orderId) {
+      await supabase.from('procurement_orders').update({ supplier, notes }).eq('id', orderId);
+      await supabase.from('procurement_items').delete().eq('procurement_order_id', orderId);
+    } else {
+      const { data: newOrder, error } = await supabase.from('procurement_orders')
+        .insert({ business_id: businessId, supplier, notes, status: 'draft' })
+        .select().single();
+      if (error) { showMsg(msg, 'Could not save: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'Save as Draft'; return; }
+      orderId = newOrder.id;
+    }
+
+    const validItems = itemRows.filter(r => r.ingredient_id && parseFloat(r.quantity) > 0);
+    if (validItems.length > 0) {
+      await supabase.from('procurement_items').insert(validItems.map(r => ({
+        procurement_order_id: orderId, ingredient_id: r.ingredient_id,
+        quantity: parseFloat(r.quantity), unit_cost: parseFloat(r.unit_cost) || 0,
+      })));
+    }
+
+    btn.disabled = false; btn.textContent = 'Save as Draft';
+    $('po-editor-card').classList.remove('show');
+    loadOrders();
+  });
+
+  async function markAsOrdered(po){
+    const ok = confirm(`Mark this purchase order (${po.supplier || 'Unnamed supplier'}) as Ordered? Items can no longer be edited after this.`);
     if (!ok) return;
-    const { error } = await supabase.from('finance_entries').delete().eq('id', id);
+    const { error } = await supabase.from('procurement_orders').update({ status: 'ordered', ordered_at: new Date().toISOString() }).eq('id', po.id);
+    if (error) { alert('Could not update: ' + error.message); return; }
+    loadOrders();
+  }
+
+  async function deletePo(po){
+    const ok = confirm(`Delete this draft purchase order (${po.supplier || 'Unnamed supplier'})? This cannot be undone.`);
+    if (!ok) return;
+    const { error } = await supabase.from('procurement_orders').delete().eq('id', po.id);
     if (error) { alert('Could not delete: ' + error.message); return; }
-    reload();
-    if (document.querySelector('.tab.active').dataset.tab !== 'overview') loadOverview();
+    loadOrders();
+  }
+
+  // ---------------- View modal (ordered / received / cancelled) ----------------
+  async function openViewModal(po){
+    $('view-po-title').textContent = po.supplier || 'Unnamed supplier';
+    $('view-po-sub').textContent = `Status: ${po.status}${po.notes ? ' · ' + po.notes : ''}`;
+    $('view-po-items').innerHTML = '<p style="color:var(--muted);font-size:13px;">Loading…</p>';
+    $('view-po-total').textContent = peso(po.total_cost);
+    hideMsg($('view-po-msg'));
+    $('view-po-modal-overlay').classList.add('show');
+
+    const { data: items } = await supabase.rpc('fn_get_procurement_order_items', { p_order_id: po.id });
+    $('view-po-items').innerHTML = (items || []).map(i => `
+      <div class="receipt-line" style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
+        <span>${i.quantity} ${i.unit || ''} × ${i.ingredient_name}</span><span>${peso(i.quantity * i.unit_cost)}</span>
+      </div>
+    `).join('') || '<p style="color:var(--muted);font-size:13px;">No items.</p>';
+
+    const actions = $('view-po-actions');
+    actions.innerHTML = '';
+    if (po.status === 'ordered') {
+      const receiveBtn = document.createElement('button');
+      receiveBtn.className = 'btn';
+      receiveBtn.style.width = '100%';
+      receiveBtn.textContent = 'Receive — add stock to Materials Inventory';
+      receiveBtn.addEventListener('click', () => receiveOrder(po, receiveBtn));
+      actions.appendChild(receiveBtn);
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'btn btn-ghost';
+      cancelBtn.style.cssText = 'width:100%;margin-top:8px;color:var(--error);';
+      cancelBtn.textContent = 'Cancel Order';
+      cancelBtn.addEventListener('click', () => cancelOrder(po));
+      actions.appendChild(cancelBtn);
+    }
+  }
+  $('view-po-modal-close').addEventListener('click', () => $('view-po-modal-overlay').classList.remove('show'));
+  $('view-po-modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'view-po-modal-overlay') $('view-po-modal-overlay').classList.remove('show'); });
+
+  async function receiveOrder(po, btn){
+    const msg = $('view-po-msg');
+    hideMsg(msg);
+    btn.disabled = true; btn.textContent = 'Receiving…';
+
+    const { error } = await supabase.rpc('fn_receive_procurement_order', { p_order_id: po.id });
+
+    btn.disabled = false; btn.textContent = 'Receive — add stock to Materials Inventory';
+
+    if (error) { showMsg(msg, 'Could not receive: ' + error.message, 'error'); return; }
+
+    $('view-po-modal-overlay').classList.remove('show');
+    await Promise.all([loadOrders(), loadMaterials()]);
+  }
+
+  async function cancelOrder(po){
+    const ok = confirm('Cancel this purchase order? No stock will be added.');
+    if (!ok) return;
+    const { error } = await supabase.from('procurement_orders').update({ status: 'cancelled' }).eq('id', po.id);
+    if (error) { alert('Could not cancel: ' + error.message); return; }
+    $('view-po-modal-overlay').classList.remove('show');
+    loadOrders();
   }
 
   // ---------------- Init ----------------
@@ -743,8 +656,8 @@
     $('who-email').textContent = session.user.email;
     updateSidebarLogo(business.logo_url);
 
-    $('range-preset').value = 'this_month';
-    applyPreset();
+    await loadMaterials();
+    await loadOrders();
 
     $('splash').style.display = 'none';
     $('shell').classList.add('show');
