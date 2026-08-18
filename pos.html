@@ -269,6 +269,11 @@
         <div class="pos-layout">
           <div>
             <input type="text" id="product-search" class="product-search" placeholder="Search products…" style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;background:var(--card);" />
+            <div class="qty-buttons" style="max-width:360px;margin:-6px 0 16px;">
+              <button type="button" class="kind-filter-btn selected" data-kind="all">All</button>
+              <button type="button" class="kind-filter-btn" data-kind="product">Products</button>
+              <button type="button" class="kind-filter-btn" data-kind="packaging">Packaging</button>
+            </div>
             <div class="product-grid" id="product-grid"></div>
             <div class="empty-state" id="products-empty" style="display:none;">No products yet — add some in Product Inventory first.</div>
           </div>
@@ -365,6 +370,8 @@
       <span id="txn-total"></span>
     </div>
     <button class="btn btn-ghost" id="txn-view-invoice-btn" style="width:100%;margin-top:14px;">View Invoice</button>
+    <div id="txn-delete-msg" class="msg" style="margin-top:10px;"></div>
+    <button class="btn btn-ghost" id="txn-delete-btn" style="width:100%;margin-top:8px;color:var(--error);">Delete Sale — restore stock</button>
   </div>
 </div>
 
@@ -464,13 +471,21 @@
     renderProductGrid();
   }
 
+  let kindFilter = 'all';
+
   function renderProductGrid(filterText){
     const grid = $('product-grid');
     grid.innerHTML = '';
-    const filtered = allProducts.filter(p => !filterText || p.name.toLowerCase().includes(filterText.toLowerCase()));
+    const filtered = allProducts.filter(p =>
+      (!filterText || p.name.toLowerCase().includes(filterText.toLowerCase())) &&
+      (kindFilter === 'all' || p.kind === kindFilter)
+    );
 
     if (filtered.length === 0) {
       $('products-empty').style.display = 'block';
+      $('products-empty').textContent = kindFilter === 'packaging'
+        ? 'No packaging items are sellable yet — go to Materials Inventory, edit a material, and turn on "Sell this directly in POS".'
+        : 'No products yet — add some in Product Inventory first.';
       return;
     }
     $('products-empty').style.display = 'none';
@@ -492,6 +507,13 @@
   }
 
   $('product-search').addEventListener('input', (e) => renderProductGrid(e.target.value));
+  document.querySelectorAll('.kind-filter-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      kindFilter = btn.dataset.kind;
+      document.querySelectorAll('.kind-filter-btn').forEach(b => b.classList.toggle('selected', b === btn));
+      renderProductGrid($('product-search').value);
+    });
+  });
 
   // ---------------- Cart ----------------
   function addToCart(item){
@@ -818,6 +840,7 @@
     $('txn-modal-sub').textContent = `${t.order_number ? t.order_number + ' · ' : ''}${(t.payment_method || '').replace('_', ' ')} · ${fmtDate(t.created_at)}`;
     $('txn-lines').innerHTML = '<p style="color:var(--muted);font-size:13px;">Loading…</p>';
     $('txn-total').textContent = peso(t.total_amount);
+    hideMsg($('txn-delete-msg'));
     $('txn-modal-overlay').classList.add('show');
 
     const { data } = await supabase.rpc('fn_get_pos_transaction_items', { p_transaction_id: t.id });
@@ -844,6 +867,25 @@
         alert('Could not generate invoice: ' + e.message);
       }
       btn.disabled = false; btn.textContent = 'View Invoice';
+    };
+
+    $('txn-delete-btn').onclick = async () => {
+      const ok = confirm(`Delete this sale (${peso(t.total_amount)})? Stock for every item will be restored, and it will no longer count in Finances. This cannot be undone.`);
+      if (!ok) return;
+
+      const msg = $('txn-delete-msg');
+      hideMsg(msg);
+      const btn = $('txn-delete-btn');
+      btn.disabled = true; btn.textContent = 'Deleting…';
+
+      const { error } = await supabase.rpc('fn_delete_pos_transaction', { p_transaction_id: t.id });
+
+      btn.disabled = false; btn.textContent = 'Delete Sale — restore stock';
+
+      if (error) { showMsg(msg, 'Could not delete: ' + error.message, 'error'); return; }
+
+      $('txn-modal-overlay').classList.remove('show');
+      await Promise.all([loadSalesHistory(), loadProductGrid()]);
     };
   }
   $('txn-modal-close').addEventListener('click', () => $('txn-modal-overlay').classList.remove('show'));
