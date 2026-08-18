@@ -143,6 +143,14 @@
   .history-reason-badge.manual{background:var(--line);color:var(--muted);}
   .history-reason-badge.procurement{background:var(--success-bg);color:var(--success);}
   .history-reason-badge.adjustment{background:var(--warn-bg);color:var(--warn);}
+
+  .toggle-row{display:flex;align-items:center;gap:10px;margin:14px 0;}
+  .switch{position:relative;width:42px;height:24px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .switch-track{position:absolute;inset:0;background:var(--line);border-radius:99px;cursor:pointer;transition:.15s;}
+  .switch-track:before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s;}
+  .switch input:checked + .switch-track{background:var(--accent);}
+  .switch input:checked + .switch-track:before{transform:translateX(18px);}
 </style>
 </head>
 <body>
@@ -340,6 +348,15 @@
               </div>
             </div>
 
+            <div class="toggle-row">
+              <label class="switch"><input type="checkbox" id="p-sellable" /><span class="switch-track"></span></label>
+              <label for="p-sellable" style="margin:0;font-size:13.5px;">Sell this directly in POS (e.g. packaging sold on its own)</label>
+            </div>
+            <div class="field" id="p-srp-field" style="display:none;">
+              <label for="p-srp">Selling price (SRP)</label>
+              <input type="number" id="p-srp" step="0.01" min="0" />
+            </div>
+
             <button type="submit" class="btn" id="add-submit">Add material</button>
             <button type="button" class="btn btn-ghost" id="cancel-add" style="margin-left:8px;">Cancel</button>
           </form>
@@ -360,7 +377,7 @@
       <div class="card">
         <table>
           <thead>
-            <tr><th>Material</th><th>Category</th><th>Unit</th><th>Cost/Unit</th><th>Supplier</th><th>Stock</th><th></th></tr>
+            <tr><th>Material</th><th>Category</th><th>Unit</th><th>Cost/Unit</th><th>SRP</th><th>Supplier</th><th>Stock</th><th></th></tr>
           </thead>
           <tbody id="product-tbody"></tbody>
         </table>
@@ -504,6 +521,15 @@
         </div>
       </div>
 
+      <div class="toggle-row">
+        <label class="switch"><input type="checkbox" id="e-sellable" /><span class="switch-track"></span></label>
+        <label for="e-sellable" style="margin:0;font-size:13.5px;">Sell this directly in POS (e.g. packaging sold on its own)</label>
+      </div>
+      <div class="field" id="e-srp-field" style="display:none;">
+        <label for="e-srp">Selling price (SRP)</label>
+        <input type="number" id="e-srp" step="0.01" min="0" />
+      </div>
+
       <button type="submit" class="btn" id="edit-submit" style="width:100%;">Save changes</button>
     </form>
   </div>
@@ -611,6 +637,7 @@
         <td>${categoryCell}</td>
         <td>${p.unit || '—'}</td>
         <td>${p.cost_per_unit != null ? '₱' + Number(p.cost_per_unit).toFixed(4) : '—'}</td>
+        <td>${p.sellable_in_pos && p.srp != null ? '<span class="history-reason-badge production">₱' + Number(p.srp).toFixed(2) + '</span>' : '—'}</td>
         <td>${p.supplier || '—'}</td>
         <td>${stockCell}</td>
         <td style="white-space:nowrap;">
@@ -748,6 +775,10 @@
     $('add-form-card').classList.remove('show');
     $('add-product-form').reset();
     setCostMode('auto');
+    $('p-srp-field').style.display = 'none';
+  });
+  $('p-sellable').addEventListener('change', (e) => {
+    $('p-srp-field').style.display = e.target.checked ? 'block' : 'none';
   });
 
   let businessId = null;
@@ -798,9 +829,12 @@
       cost_per_unit = $('p-cost').value ? parseFloat($('p-cost').value) : 0;
     }
 
+    const sellable_in_pos = $('p-sellable').checked;
+    const srp = sellable_in_pos && $('p-srp').value ? parseFloat($('p-srp').value) : null;
+
     const { data: newIngredient, error } = await supabase
       .from('ingredients')
-      .insert({ business_id: businessId, name, unit, supplier, category, cost_per_unit })
+      .insert({ business_id: businessId, name, unit, supplier, category, cost_per_unit, sellable_in_pos, srp })
       .select()
       .single();
 
@@ -936,12 +970,18 @@
     $('e-cost').value = p.cost_per_unit || '';
     $('e-pack-cost').value = '';
     $('e-pack-size').value = '';
+    $('e-sellable').checked = !!p.sellable_in_pos;
+    $('e-srp').value = p.srp || '';
+    $('e-srp-field').style.display = p.sellable_in_pos ? 'block' : 'none';
     setEditCostMode('manual'); // editing starts from the known current cost per unit
     updateEditComputedCost();
     $('edit-modal-overlay').classList.add('show');
   }
   $('edit-modal-close').addEventListener('click', () => $('edit-modal-overlay').classList.remove('show'));
   $('edit-modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'edit-modal-overlay') $('edit-modal-overlay').classList.remove('show'); });
+  $('e-sellable').addEventListener('change', (e) => {
+    $('e-srp-field').style.display = e.target.checked ? 'block' : 'none';
+  });
 
   $('edit-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -964,9 +1004,12 @@
       cost_per_unit = $('e-cost').value ? parseFloat($('e-cost').value) : 0;
     }
 
+    const sellable_in_pos = $('e-sellable').checked;
+    const srp = sellable_in_pos && $('e-srp').value ? parseFloat($('e-srp').value) : null;
+
     const { error } = await supabase
       .from('ingredients')
-      .update({ name, unit, supplier, category, cost_per_unit })
+      .update({ name, unit, supplier, category, cost_per_unit, sellable_in_pos, srp })
       .eq('id', editTarget.id);
 
     btn.disabled = false; btn.textContent = 'Save changes';
