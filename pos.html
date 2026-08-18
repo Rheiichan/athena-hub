@@ -172,6 +172,15 @@
   .sales-row:hover{background:var(--bg);}
   .sales-row .meta{color:var(--muted);font-size:11.5px;margin-top:2px;}
 
+  .toggle-row{display:flex;align-items:center;gap:10px;margin:14px 0;}
+  .switch{position:relative;width:42px;height:24px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .switch-track{position:absolute;inset:0;background:var(--line);border-radius:99px;cursor:pointer;transition:.15s;}
+  .switch-track:before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s;}
+  .switch input:checked + .switch-track{background:var(--accent);}
+  .switch input:checked + .switch-track:before{transform:translateX(18px);}
+  .summary-line{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:var(--muted);}
+
   .receipt-line{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;}
   .receipt-total{display:flex;justify-content:space-between;font-weight:700;font-size:15px;padding-top:10px;margin-top:8px;border-top:1px solid var(--line);}
 </style>
@@ -283,6 +292,32 @@
             <div id="cart-lines"></div>
             <div class="cart-empty" id="cart-empty">Cart is empty — tap a product to add it.</div>
 
+            <div id="invoice-adjustments" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);">
+              <div class="field-row">
+                <div class="field">
+                  <label for="invoice-discount-type">Discount (whole invoice)</label>
+                  <select id="invoice-discount-type">
+                    <option value="">None</option>
+                    <option value="percent">Percent (%)</option>
+                    <option value="fixed">Fixed amount</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="invoice-discount-value">&nbsp;</label>
+                  <input type="number" id="invoice-discount-value" step="0.01" min="0" placeholder="0" disabled />
+                </div>
+              </div>
+              <div class="field">
+                <label for="invoice-vat-pct">VAT %</label>
+                <input type="number" id="invoice-vat-pct" step="0.01" min="0" placeholder="e.g. 12" />
+              </div>
+            </div>
+
+            <div id="cart-summary" style="display:none;margin-top:12px;">
+              <div class="summary-line"><span>Subtotal</span><span id="sum-subtotal">₱0.00</span></div>
+              <div class="summary-line" id="sum-discount-row" style="display:none;"><span>Discount</span><span id="sum-discount">-₱0.00</span></div>
+              <div class="summary-line" id="sum-vat-row" style="display:none;"><span>VAT</span><span id="sum-vat">+₱0.00</span></div>
+            </div>
             <div class="cart-total-row" id="cart-total-row" style="display:none;">
               <span>Total</span>
               <span id="cart-total">₱0.00</span>
@@ -340,6 +375,38 @@
         </div>
       </div>
     </main>
+  </div>
+</div>
+
+<!-- ITEM DISCOUNT / FREE MODAL -->
+<div class="modal-overlay" id="item-discount-modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="item-discount-modal-close">&times;</button>
+    <h3 id="item-discount-title">Item</h3>
+    <p class="sub">Discount or free just for this item.</p>
+
+    <div class="toggle-row">
+      <label class="switch"><input type="checkbox" id="item-free-toggle" /><span class="switch-track"></span></label>
+      <label for="item-free-toggle" style="margin:0;font-size:13.5px;">Make this item free</label>
+    </div>
+
+    <div id="item-discount-fields">
+      <div class="field">
+        <label for="item-discount-type">Discount type</label>
+        <select id="item-discount-type">
+          <option value="">None</option>
+          <option value="percent">Percent (%)</option>
+          <option value="fixed">Fixed amount</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="item-discount-value">Discount value</label>
+        <input type="number" id="item-discount-value" step="0.01" min="0" disabled />
+      </div>
+    </div>
+
+    <button type="button" class="btn" id="item-discount-apply-btn" style="width:100%;">Apply</button>
+    <button type="button" class="btn btn-ghost" id="item-discount-clear-btn" style="width:100%;margin-top:8px;">Clear</button>
   </div>
 </div>
 
@@ -523,7 +590,7 @@
       line.qty += 1;
     } else {
       if (item.current_stock < 1) return;
-      line = { id: item.id, kind: item.kind, name: item.name, qty: 1, current_stock: item.current_stock };
+      line = { id: item.id, kind: item.kind, name: item.name, qty: 1, current_stock: item.current_stock, is_free: false, discount_type: null, discount_value: 0 };
       cart.push(line);
     }
     line.unit_price = priceForQty(item, line.qty);
@@ -551,11 +618,15 @@
 
     if (cart.length === 0) {
       $('cart-empty').style.display = 'block';
+      $('invoice-adjustments').style.display = 'none';
+      $('cart-summary').style.display = 'none';
       $('cart-total-row').style.display = 'none';
       $('checkout-fields').style.display = 'none';
       return;
     }
     $('cart-empty').style.display = 'none';
+    $('invoice-adjustments').style.display = 'block';
+    $('cart-summary').style.display = 'block';
     $('cart-total-row').style.display = 'flex';
     $('checkout-fields').style.display = 'block';
 
@@ -564,21 +635,28 @@
       $('sale-date').value = new Date().toISOString().slice(0, 10);
     }
 
-    let total = 0;
+    let subtotal = 0;
     cart.forEach((line) => {
-      total += line.qty * line.unit_price;
+      const lt = computeLineTotals(line);
+      subtotal += lt.total;
       const row = document.createElement('div');
       row.className = 'cart-line';
+      const priceLine = line.is_free
+        ? `<span style="text-decoration:line-through;color:var(--muted);">${peso(line.unit_price)}</span> <span style="color:var(--success);font-weight:700;">FREE</span>`
+        : lt.discountAmt > 0
+          ? `<span style="text-decoration:line-through;color:var(--muted);">${peso(line.unit_price)}</span> ${peso(lt.effectiveUnitPrice)} each`
+          : `${peso(line.unit_price)} each`;
       row.innerHTML = `
         <div>
           <div class="cart-line-name">${line.name}</div>
-          <div class="cart-line-price">${peso(line.unit_price)} each</div>
+          <div class="cart-line-price">${priceLine}</div>
         </div>
         <div class="cart-qty-ctrl">
           <button type="button" class="cart-minus" data-id="${line.id}" data-kind="${line.kind}">−</button>
           <span>${line.qty}</span>
           <button type="button" class="cart-plus" data-id="${line.id}" data-kind="${line.kind}">+</button>
         </div>
+        <button type="button" class="cart-discount-btn" data-id="${line.id}" data-kind="${line.kind}" title="Discount / Free" style="background:none;border:none;color:var(--accent-ink);cursor:pointer;font-size:13px;padding:0 4px;">%</button>
         <button type="button" class="cart-remove" data-id="${line.id}" data-kind="${line.kind}">&times;</button>
       `;
       wrap.appendChild(row);
@@ -590,9 +668,92 @@
       cart = cart.filter(l => !(l.id === e.target.dataset.id && l.kind === e.target.dataset.kind));
       renderCart();
     }));
+    wrap.querySelectorAll('.cart-discount-btn').forEach(el => el.addEventListener('click', (e) => {
+      openItemDiscountModal(e.target.dataset.id, e.target.dataset.kind);
+    }));
 
+    updateSummary(subtotal);
+  }
+
+  function computeLineTotals(line){
+    const base = line.qty * line.unit_price;
+    if (line.is_free) return { base, discountAmt: base, total: 0, effectiveUnitPrice: 0 };
+    let discountAmt = 0;
+    if (line.discount_type === 'percent') discountAmt = base * (parseFloat(line.discount_value) || 0) / 100;
+    else if (line.discount_type === 'fixed') discountAmt = Math.min(parseFloat(line.discount_value) || 0, base);
+    const total = Math.max(0, base - discountAmt);
+    return { base, discountAmt, total, effectiveUnitPrice: line.qty > 0 ? total / line.qty : 0 };
+  }
+
+  function updateSummary(subtotal){
+    const discountType = $('invoice-discount-type').value;
+    const discountValue = parseFloat($('invoice-discount-value').value) || 0;
+    let discountAmount = 0;
+    if (discountType === 'percent') discountAmount = subtotal * discountValue / 100;
+    else if (discountType === 'fixed') discountAmount = Math.min(discountValue, subtotal);
+
+    const afterDiscount = Math.max(0, subtotal - discountAmount);
+    const vatPct = parseFloat($('invoice-vat-pct').value) || 0;
+    const vatAmount = afterDiscount * vatPct / 100;
+    const total = afterDiscount + vatAmount;
+
+    $('sum-subtotal').textContent = peso(subtotal);
+    $('sum-discount-row').style.display = discountAmount > 0 ? 'flex' : 'none';
+    $('sum-discount').textContent = '-' + peso(discountAmount);
+    $('sum-vat-row').style.display = vatAmount > 0 ? 'flex' : 'none';
+    $('sum-vat').textContent = '+' + peso(vatAmount);
     $('cart-total').textContent = peso(total);
   }
+
+  $('invoice-discount-type').addEventListener('change', (e) => {
+    $('invoice-discount-value').disabled = !e.target.value;
+    if (!e.target.value) $('invoice-discount-value').value = '';
+    renderCart();
+  });
+  $('invoice-discount-value').addEventListener('input', () => renderCart());
+  $('invoice-vat-pct').addEventListener('input', () => renderCart());
+
+  // ---------------- Per-item discount / free ----------------
+  let itemDiscountTarget = null;
+
+  function openItemDiscountModal(id, kind){
+    const line = cart.find(l => l.id === id && l.kind === kind);
+    if (!line) return;
+    itemDiscountTarget = line;
+    $('item-discount-title').textContent = line.name;
+    $('item-free-toggle').checked = !!line.is_free;
+    $('item-discount-type').value = line.discount_type || '';
+    $('item-discount-value').value = line.discount_value || '';
+    $('item-discount-value').disabled = !line.discount_type;
+    $('item-discount-fields').style.display = line.is_free ? 'none' : 'block';
+    $('item-discount-modal-overlay').classList.add('show');
+  }
+  $('item-discount-modal-close').addEventListener('click', () => $('item-discount-modal-overlay').classList.remove('show'));
+  $('item-discount-modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'item-discount-modal-overlay') $('item-discount-modal-overlay').classList.remove('show'); });
+
+  $('item-free-toggle').addEventListener('change', (e) => {
+    $('item-discount-fields').style.display = e.target.checked ? 'none' : 'block';
+  });
+  $('item-discount-type').addEventListener('change', (e) => {
+    $('item-discount-value').disabled = !e.target.value;
+  });
+
+  $('item-discount-apply-btn').addEventListener('click', () => {
+    if (!itemDiscountTarget) return;
+    itemDiscountTarget.is_free = $('item-free-toggle').checked;
+    itemDiscountTarget.discount_type = itemDiscountTarget.is_free ? null : ($('item-discount-type').value || null);
+    itemDiscountTarget.discount_value = itemDiscountTarget.discount_type ? (parseFloat($('item-discount-value').value) || 0) : 0;
+    $('item-discount-modal-overlay').classList.remove('show');
+    renderCart();
+  });
+  $('item-discount-clear-btn').addEventListener('click', () => {
+    if (!itemDiscountTarget) return;
+    itemDiscountTarget.is_free = false;
+    itemDiscountTarget.discount_type = null;
+    itemDiscountTarget.discount_value = 0;
+    $('item-discount-modal-overlay').classList.remove('show');
+    renderCart();
+  });
 
   // ---------------- Order number + Invoice PDF ----------------
   function generateOrderNumber(){
@@ -709,10 +870,12 @@
         doc.setFillColor(247, 245, 250);
         doc.rect(15, y, pageWidth - 15 - 15, 8, 'F');
       }
-      doc.text(item.name, 18, rowY - 1.5);
+      const lineTotal = item.total != null ? item.total : item.qty * item.unit_price;
+      const priceLabel = item.is_free ? 'FREE' : peso(item.unit_price);
+      doc.text(item.name + (item.is_free ? ' (FREE)' : ''), 18, rowY - 1.5);
       doc.text(String(item.qty), colQty, rowY - 1.5, { align: 'right' });
-      doc.text(peso(item.unit_price), colPrice, rowY - 1.5, { align: 'right' });
-      doc.text(peso(item.qty * item.unit_price), colTotal, rowY - 1.5, { align: 'right' });
+      doc.text(priceLabel, colPrice, rowY - 1.5, { align: 'right' });
+      doc.text(peso(lineTotal), colTotal, rowY - 1.5, { align: 'right' });
       y += 8;
     });
 
@@ -720,6 +883,27 @@
     doc.setDrawColor(220, 215, 225);
     doc.line(15, y, pageWidth - 15, y);
     y += 8;
+
+    doc.setFont('NotoSans', 'normal');
+    doc.setFontSize(10.5);
+    doc.setTextColor(90, 85, 100);
+    if (saleData.subtotal != null) {
+      doc.text('Subtotal', colPrice, y, { align: 'right' });
+      doc.text(peso(saleData.subtotal), colTotal, y, { align: 'right' });
+      y += 6.5;
+    }
+    if (saleData.discountAmount > 0) {
+      doc.text('Discount', colPrice, y, { align: 'right' });
+      doc.text('-' + peso(saleData.discountAmount), colTotal, y, { align: 'right' });
+      y += 6.5;
+    }
+    if (saleData.vatAmount > 0) {
+      doc.text(`VAT${saleData.vatPct ? ' (' + saleData.vatPct + '%)' : ''}`, colPrice, y, { align: 'right' });
+      doc.text('+' + peso(saleData.vatAmount), colTotal, y, { align: 'right' });
+      y += 6.5;
+    }
+
+    y += 3;
     doc.setFont('NotoSans', 'bold');
     doc.setFontSize(13);
     doc.setTextColor(ar, ag, ab);
@@ -737,14 +921,19 @@
   }
 
   function collectSaleDataFromForm(){
+    const calc = computeInvoiceTotals();
     return {
       orderNumber: $('order-number').value,
       customerName: $('customer-name').value.trim(),
       saleDate: $('sale-date').value || new Date().toISOString().slice(0, 10),
       salesChannel: $('sales-channel').value,
       paymentMethod: $('payment-method').options[$('payment-method').selectedIndex].text,
-      items: cart.map(l => ({ name: l.name, qty: l.qty, unit_price: l.unit_price })),
-      total: cart.reduce((sum, l) => sum + l.qty * l.unit_price, 0),
+      items: calc.lineResults.map(r => ({ name: r.line.name, qty: r.line.qty, unit_price: r.line.unit_price, total: r.total, is_free: r.line.is_free })),
+      subtotal: calc.subtotal,
+      discountAmount: calc.discountAmount,
+      vatPct: calc.vatPct,
+      vatAmount: calc.vatAmount,
+      total: calc.total,
     };
   }
 
@@ -763,6 +952,24 @@
   });
 
   // ---------------- Checkout ----------------
+  function computeInvoiceTotals(){
+    const lineResults = cart.map(l => ({ line: l, ...computeLineTotals(l) }));
+    const subtotal = lineResults.reduce((s, r) => s + r.total, 0);
+
+    const discountType = $('invoice-discount-type').value || null;
+    const discountValue = discountType ? (parseFloat($('invoice-discount-value').value) || 0) : 0;
+    let discountAmount = 0;
+    if (discountType === 'percent') discountAmount = subtotal * discountValue / 100;
+    else if (discountType === 'fixed') discountAmount = Math.min(discountValue, subtotal);
+
+    const afterDiscount = Math.max(0, subtotal - discountAmount);
+    const vatPct = parseFloat($('invoice-vat-pct').value) || 0;
+    const vatAmount = afterDiscount * vatPct / 100;
+    const total = afterDiscount + vatAmount;
+
+    return { lineResults, subtotal, discountType, discountValue, discountAmount, vatPct, vatAmount, total };
+  }
+
   $('checkout-btn').addEventListener('click', async () => {
     const msg = $('checkout-msg');
     hideMsg(msg);
@@ -771,7 +978,14 @@
     const btn = $('checkout-btn');
     btn.disabled = true; btn.textContent = 'Processing…';
 
-    const items = cart.map(l => ({ kind: l.kind, id: l.id, qty: l.qty, unit_price: l.unit_price }));
+    const calc = computeInvoiceTotals();
+    const items = calc.lineResults.map(r => ({
+      kind: r.line.kind, id: r.line.id, qty: r.line.qty,
+      unit_price: r.effectiveUnitPrice,
+      original_unit_price: r.line.unit_price,
+      is_free: r.line.is_free,
+      line_discount: r.discountAmt,
+    }));
     const paymentMethod = $('payment-method').value;
     const orderNumber = $('order-number').value;
     const customerName = $('customer-name').value.trim() || null;
@@ -782,6 +996,9 @@
       p_items: items, p_payment_method: paymentMethod,
       p_order_number: orderNumber, p_customer_name: customerName,
       p_sales_channel: salesChannel, p_sale_date: saleDate,
+      p_subtotal: calc.subtotal, p_discount_type: calc.discountType, p_discount_value: calc.discountValue,
+      p_discount_amount: calc.discountAmount, p_vat_pct: calc.vatPct, p_vat_amount: calc.vatAmount,
+      p_total: calc.total,
     });
 
     btn.disabled = false; btn.textContent = 'Complete Sale';
@@ -791,17 +1008,23 @@
       return;
     }
 
-    const total = cart.reduce((sum, l) => sum + l.qty * l.unit_price, 0);
     $('receipt-sub').textContent = `${orderNumber} · ${fmtDate(new Date().toISOString())} · ${paymentMethod.replace('_', ' ')}`;
-    $('receipt-lines').innerHTML = cart.map(l => `
-      <div class="receipt-line"><span>${l.qty} × ${l.name}</span><span>${peso(l.qty * l.unit_price)}</span></div>
-    `).join('');
-    $('receipt-total').textContent = peso(total);
+    $('receipt-lines').innerHTML = calc.lineResults.map(r => `
+      <div class="receipt-line"><span>${r.line.qty} × ${r.line.name}${r.line.is_free ? ' (FREE)' : ''}</span><span>${peso(r.total)}</span></div>
+    `).join('')
+      + `<div class="receipt-line"><span>Subtotal</span><span>${peso(calc.subtotal)}</span></div>`
+      + (calc.discountAmount > 0 ? `<div class="receipt-line"><span>Discount</span><span>-${peso(calc.discountAmount)}</span></div>` : '')
+      + (calc.vatAmount > 0 ? `<div class="receipt-line"><span>VAT (${calc.vatPct}%)</span><span>+${peso(calc.vatAmount)}</span></div>` : '');
+    $('receipt-total').textContent = peso(calc.total);
     $('receipt-modal-overlay').classList.add('show');
 
     cart = [];
     $('order-number').value = '';
     $('customer-name').value = '';
+    $('invoice-discount-type').value = '';
+    $('invoice-discount-value').value = '';
+    $('invoice-discount-value').disabled = true;
+    $('invoice-vat-pct').value = '';
     renderCart();
     await loadProductGrid();
   });
@@ -846,7 +1069,7 @@
     const { data } = await supabase.rpc('fn_get_pos_transaction_items', { p_transaction_id: t.id });
     const items = data || [];
     $('txn-lines').innerHTML = items.map(item => `
-      <div class="receipt-line"><span>${item.qty} × ${item.product_name}</span><span>${peso(item.qty * item.unit_price)}</span></div>
+      <div class="receipt-line"><span>${item.qty} × ${item.product_name}${item.is_free ? ' (FREE)' : ''}</span><span>${peso(item.is_free ? 0 : item.qty * item.unit_price)}</span></div>
     `).join('') || '<p style="color:var(--muted);font-size:13px;">No items found.</p>';
 
     $('txn-view-invoice-btn').onclick = async () => {
@@ -859,7 +1082,11 @@
           saleDate: t.sale_date || t.created_at.slice(0, 10),
           salesChannel: t.sales_channel || '',
           paymentMethod: (t.payment_method || '').replace('_', ' '),
-          items: items.map(i => ({ name: i.product_name, qty: i.qty, unit_price: i.unit_price })),
+          items: items.map(i => ({ name: i.product_name, qty: i.qty, unit_price: i.original_unit_price != null ? i.original_unit_price : i.unit_price, total: i.qty * i.unit_price, is_free: i.is_free })),
+          subtotal: t.subtotal,
+          discountAmount: t.discount_amount || 0,
+          vatPct: t.vat_pct || 0,
+          vatAmount: t.vat_amount || 0,
           total: t.total_amount,
         });
         window.open(doc.output('bloburl'), '_blank');
