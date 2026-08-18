@@ -156,7 +156,7 @@
   .status-badge{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:3px 10px;border-radius:99px;}
   .status-badge.draft{background:var(--line);color:var(--muted);}
   .status-badge.ordered{background:var(--warn-bg);color:var(--warn);}
-  .status-badge.received{background:var(--success-bg);color:var(--success);}
+  .status-badge.delivered{background:var(--success-bg);color:var(--success);}
   .status-badge.cancelled{background:var(--error-bg);color:var(--error);}
   .summary-box{background:var(--accent-soft);border-radius:10px;padding:16px 18px;}
   .summary-line.total{font-weight:700;font-size:15px;}
@@ -314,7 +314,7 @@
   </div>
 </div>
 
-<!-- VIEW ORDER MODAL (read-only, for ordered/received/cancelled) -->
+<!-- VIEW ORDER MODAL (read-only, for ordered/delivered/cancelled) -->
 <div class="modal-overlay" id="view-po-modal-overlay">
   <div class="modal">
     <button class="modal-close" id="view-po-modal-close">&times;</button>
@@ -412,7 +412,7 @@
     orders.forEach((po) => {
       const card = document.createElement('div');
       card.className = 'po-card';
-      const dateLabel = po.status === 'received' ? `Received ${fmtDate(po.received_at)}`
+      const dateLabel = po.status === 'delivered' ? `Delivered ${fmtDate(po.received_at)}`
         : po.status === 'ordered' ? `Ordered ${fmtDate(po.ordered_at)}`
         : `Created ${fmtDate(po.created_at)}`;
       card.innerHTML = `
@@ -427,6 +427,10 @@
             <button class="btn btn-sm btn-ghost edit-po-btn">Edit</button>
             <button class="btn btn-sm btn-ghost mark-ordered-btn">Mark as Ordered</button>
             <button class="btn btn-sm btn-ghost delete-po-btn" style="color:var(--error);">Delete</button>
+          ` : po.status === 'ordered' ? `
+            <button class="btn btn-sm deliver-po-btn">Mark as Delivered — add to Materials Inventory</button>
+            <button class="btn btn-sm btn-ghost view-po-btn">View</button>
+            <button class="btn btn-sm btn-ghost cancel-po-btn" style="color:var(--error);">Cancel</button>
           ` : `
             <button class="btn btn-sm btn-ghost view-po-btn">View</button>
           `}
@@ -436,6 +440,10 @@
         card.querySelector('.edit-po-btn').addEventListener('click', () => openPoEditor(po));
         card.querySelector('.mark-ordered-btn').addEventListener('click', () => markAsOrdered(po));
         card.querySelector('.delete-po-btn').addEventListener('click', () => deletePo(po));
+      } else if (po.status === 'ordered') {
+        card.querySelector('.deliver-po-btn').addEventListener('click', (e) => deliverOrder(po, e.target));
+        card.querySelector('.view-po-btn').addEventListener('click', () => openViewModal(po));
+        card.querySelector('.cancel-po-btn').addEventListener('click', () => cancelOrder(po));
       } else {
         card.querySelector('.view-po-btn').addEventListener('click', () => openViewModal(po));
       }
@@ -573,7 +581,7 @@
     loadOrders();
   }
 
-  // ---------------- View modal (ordered / received / cancelled) ----------------
+  // ---------------- View modal (ordered / delivered / cancelled) ----------------
   async function openViewModal(po){
     $('view-po-title').textContent = po.supplier || 'Unnamed supplier';
     $('view-po-sub').textContent = `Status: ${po.status}${po.notes ? ' · ' + po.notes : ''}`;
@@ -592,12 +600,12 @@
     const actions = $('view-po-actions');
     actions.innerHTML = '';
     if (po.status === 'ordered') {
-      const receiveBtn = document.createElement('button');
-      receiveBtn.className = 'btn';
-      receiveBtn.style.width = '100%';
-      receiveBtn.textContent = 'Receive — add stock to Materials Inventory';
-      receiveBtn.addEventListener('click', () => receiveOrder(po, receiveBtn));
-      actions.appendChild(receiveBtn);
+      const deliverBtn = document.createElement('button');
+      deliverBtn.className = 'btn';
+      deliverBtn.style.width = '100%';
+      deliverBtn.textContent = 'Mark as Delivered — add stock to Materials Inventory';
+      deliverBtn.addEventListener('click', () => deliverOrder(po, deliverBtn, $('view-po-msg')));
+      actions.appendChild(deliverBtn);
 
       const cancelBtn = document.createElement('button');
       cancelBtn.className = 'btn btn-ghost';
@@ -610,16 +618,23 @@
   $('view-po-modal-close').addEventListener('click', () => $('view-po-modal-overlay').classList.remove('show'));
   $('view-po-modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'view-po-modal-overlay') $('view-po-modal-overlay').classList.remove('show'); });
 
-  async function receiveOrder(po, btn){
-    const msg = $('view-po-msg');
-    hideMsg(msg);
-    btn.disabled = true; btn.textContent = 'Receiving…';
+  async function deliverOrder(po, btn, msgEl){
+    const ok = confirm(`Mark this order (${po.supplier || 'Unnamed supplier'}) as Delivered? This will add its items to Materials Inventory stock.`);
+    if (!ok) return;
 
-    const { error } = await supabase.rpc('fn_receive_procurement_order', { p_order_id: po.id });
+    if (msgEl) hideMsg(msgEl);
+    const originalText = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Marking delivered…';
 
-    btn.disabled = false; btn.textContent = 'Receive — add stock to Materials Inventory';
+    const { error } = await supabase.rpc('fn_deliver_procurement_order', { p_order_id: po.id });
 
-    if (error) { showMsg(msg, 'Could not receive: ' + error.message, 'error'); return; }
+    btn.disabled = false; btn.textContent = originalText;
+
+    if (error) {
+      const errText = 'Could not mark delivered: ' + error.message;
+      if (msgEl) showMsg(msgEl, errText, 'error'); else alert(errText);
+      return;
+    }
 
     $('view-po-modal-overlay').classList.remove('show');
     await Promise.all([loadOrders(), loadMaterials()]);
