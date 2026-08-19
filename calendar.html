@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Athena — Finances</title>
+<title>Athena — Calendar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -144,6 +144,63 @@
   .history-reason-badge.procurement{background:var(--success-bg);color:var(--success);}
   .history-reason-badge.adjustment{background:var(--warn-bg);color:var(--warn);}
 
+  .row-item{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;}
+  .row-item select, .row-item input{margin-bottom:0;}
+  .row-remove{background:none;border:none;color:var(--error);cursor:pointer;font-size:18px;line-height:1;padding:4px 8px;}
+
+  .po-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:12px;}
+  .po-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+  .po-card h3{font-family:Arial,sans-serif;font-weight:700;font-size:16px;margin:0 0 4px;}
+  .po-card .meta{font-size:12.5px;color:var(--muted);}
+
+  .status-badge{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:3px 10px;border-radius:99px;}
+  .status-badge.draft{background:var(--line);color:var(--muted);}
+  .status-badge.ordered{background:var(--warn-bg);color:var(--warn);}
+  .status-badge.delivered{background:var(--success-bg);color:var(--success);}
+  .status-badge.cancelled{background:var(--error-bg);color:var(--error);}
+
+  .cal-layout{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;}
+  @media (max-width:980px){ .cal-layout{grid-template-columns:1fr;} }
+
+  .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .cal-month-label{font-family:Arial,sans-serif;font-weight:700;font-size:19px;}
+  .cal-nav-btn{background:var(--card);border:1px solid var(--line);border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:16px;color:var(--ink);}
+  .cal-nav-btn:hover{border-color:var(--accent);}
+  .cal-today-btn{padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:13px;font-family:inherit;font-weight:600;}
+
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+  .cal-dow{text-align:center;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;padding-bottom:6px;}
+  .cal-cell{background:var(--card);border:1px solid var(--line);border-radius:10px;min-height:84px;padding:6px;cursor:pointer;display:flex;flex-direction:column;gap:3px;}
+  .cal-cell:hover{border-color:var(--accent);}
+  .cal-cell.other-month{opacity:.35;}
+  .cal-cell.today{border-color:var(--accent);border-width:2px;}
+  .cal-cell.selected{background:var(--accent-soft);border-color:var(--accent);}
+  .cal-cell .daynum{font-size:12.5px;font-weight:700;}
+  .cal-event-dot{font-size:10px;padding:1px 5px;border-radius:99px;background:var(--accent-soft);color:var(--accent-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cal-event-dot.production{background:#E7F4ED;color:#0F3320;}
+  .cal-event-dot.maintenance{background:#FBF3E0;color:#9A6B12;}
+  .cal-event-dot.team_building{background:#F1ECFA;color:#3B2260;}
+  .cal-event-dot.event{background:#FBEAF2;color:#5C1D3B;}
+  .cal-event-dot.other{background:var(--line);color:var(--muted);}
+  .cal-todo-badge{font-size:10px;color:var(--muted);margin-top:auto;}
+
+  .day-panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;position:sticky;top:20px;}
+  .day-panel h3{font-family:Arial,sans-serif;font-weight:700;font-size:16px;margin:0 0 14px;}
+  .day-event-row{padding:10px 0;border-bottom:1px solid var(--line);}
+  .day-event-row:last-child{border-bottom:none;}
+  .day-event-row .title-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .day-event-row .time{font-size:11px;color:var(--muted);}
+  .day-event-row .notes{font-size:12px;color:var(--muted);margin-top:2px;}
+  .day-event-del{background:none;border:none;color:var(--error);cursor:pointer;font-size:15px;flex-shrink:0;}
+
+  .todo-row{display:flex;align-items:flex-start;gap:8px;padding:7px 0;}
+  .todo-row input[type=checkbox]{margin-top:3px;width:16px;height:16px;flex-shrink:0;cursor:pointer;}
+  .todo-row .todo-text{font-size:13.5px;flex:1;}
+  .todo-row.done .todo-text{text-decoration:line-through;color:var(--muted);}
+  .todo-del{background:none;border:none;color:var(--error);cursor:pointer;font-size:14px;flex-shrink:0;}
+  .summary-box{background:var(--accent-soft);border-radius:10px;padding:16px 18px;}
+  .summary-line.total{font-weight:700;font-size:15px;}
+
   .summary-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:22px;}
   .summary-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;}
   .summary-card .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;}
@@ -205,16 +262,16 @@
       </a>
 
       <p class="nav-section-label">Operate</p>
-      <a class="nav-item" href="calendar.html">
+      <div class="nav-item active">
         <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9.5h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg>Calendar</span>
-      </a>
+      </div>
       <a class="nav-item" href="orders.html">
         <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3.2h6a1 1 0 0 1 1 1V5.5H8V4.2a1 1 0 0 1 1-1Z"/><path d="M9 13l2 2 4-4.5"/></svg>Order Release Tracker</span>
         <span class="soon">Soon</span>
       </a>
-      <div class="nav-item active">
+      <a class="nav-item" href="finances.html">
         <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V11"/><path d="M10 20V4"/><path d="M16 20v-6.5"/><path d="M2 20h20"/></svg>Finances</span>
-      </div>
+      </a>
       <a class="nav-item" href="employees.html">
         <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><circle cx="17.5" cy="9" r="2.3"/><path d="M15 20a4.5 4.5 0 0 1 6.5-4"/></svg>Employees</span>
         <span class="soon">Soon</span>
@@ -248,153 +305,73 @@
     <main>
       <div class="page-head">
         <div>
-          <h1>Finances</h1>
-          <p>Income, expenses, and the numbers behind them.</p>
+          <h1>Calendar</h1>
+          <p>Events, production days, and a to-do list tied to your dates.</p>
         </div>
       </div>
 
-      <div class="tabs">
-        <div class="tab active" data-tab="overview">Overview</div>
-        <div class="tab" data-tab="expenses">Expenses</div>
-        <div class="tab" data-tab="income">Income</div>
-      </div>
-
-      <div class="date-range-bar">
-        <select id="range-preset">
-          <option value="this_month">This Month</option>
-          <option value="last_month">Last Month</option>
-          <option value="this_year">This Year</option>
-          <option value="custom">Custom Range</option>
-        </select>
-        <input type="date" id="range-start" style="display:none;" />
-        <span id="range-to-label" style="display:none;color:var(--muted);font-size:13px;">to</span>
-        <input type="date" id="range-end" style="display:none;" />
-      </div>
-
-      <!-- OVERVIEW TAB -->
-      <div class="tab-panel active" id="panel-overview">
-        <div class="summary-cards">
-          <div class="summary-card income">
-            <div class="label">Total Income</div>
-            <div class="value" id="sum-income">₱0.00</div>
+      <div class="cal-layout">
+        <div>
+          <div class="cal-header">
+            <button class="cal-nav-btn" id="cal-prev">&larr;</button>
+            <div class="cal-month-label" id="cal-month-label">Month Year</div>
+            <button class="cal-nav-btn" id="cal-next">&rarr;</button>
           </div>
-          <div class="summary-card expense">
-            <div class="label">Total Expenses</div>
-            <div class="value" id="sum-expenses">₱0.00</div>
+          <div style="margin-bottom:12px;">
+            <button class="cal-today-btn" id="cal-today-btn">Today</button>
           </div>
-          <div class="summary-card net">
-            <div class="label">Net Profit</div>
-            <div class="value" id="sum-net">₱0.00</div>
-            <div id="margin-display" style="margin-top:6px;font-size:12.5px;"></div>
+          <div class="cal-grid" id="cal-dow-row"></div>
+          <div class="cal-grid" id="cal-grid" style="margin-top:6px;"></div>
+        </div>
+
+        <div class="day-panel">
+          <h3 id="day-panel-title">Select a day</h3>
+
+          <div id="day-events-section">
+            <div id="day-events-list"></div>
+            <div class="empty-state" id="day-events-empty" style="display:none;padding:14px 0;">No events this day.</div>
+            <button type="button" class="btn btn-ghost btn-sm" id="add-event-btn" style="width:100%;margin-top:6px;">+ Add Event</button>
           </div>
-        </div>
 
-        <div class="card card-pad" style="margin-bottom:20px;">
-          <p style="margin:0 0 4px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;">Income breakdown</p>
-          <div class="summary-line" style="padding:6px 0;"><span>POS Sales</span><span id="breakdown-pos">₱0.00</span></div>
-          <div class="summary-line" style="padding:6px 0;"><span>Other Income</span><span id="breakdown-other-income">₱0.00</span></div>
-        </div>
-
-        <div class="card card-pad">
-          <p style="margin:0 0 10px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;">Expenses by category</p>
-          <div id="expense-breakdown-list"></div>
-          <div class="empty-state" id="expense-breakdown-empty" style="display:none;">No expenses recorded in this range.</div>
-        </div>
-      </div>
-
-      <!-- EXPENSES TAB -->
-      <div class="tab-panel" id="panel-expenses">
-        <div class="page-head" style="margin-bottom:16px;">
-          <div></div>
-          <button class="btn" id="toggle-add-expense-btn">+ Add Expense</button>
-        </div>
-
-        <div class="card add-form" id="expense-form-card">
-          <div class="card-pad">
-            <h3 style="font-family:Arial,sans-serif;font-weight:700;font-size:16px;margin:0 0 14px;">New expense</h3>
-            <div id="expense-msg" class="msg"></div>
+          <div id="event-form" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);">
+            <div id="event-msg" class="msg"></div>
+            <div class="field">
+              <label for="ev-title">Title</label>
+              <input type="text" id="ev-title" />
+            </div>
             <div class="field-row">
               <div class="field">
-                <label for="exp-category">Category</label>
-                <select id="exp-category">
-                  <option value="Rent">Rent</option>
-                  <option value="Utilities">Utilities</option>
-                  <option value="Materials/Supplies">Materials/Supplies</option>
-                  <option value="Packaging">Packaging</option>
-                  <option value="Shipping">Shipping</option>
-                  <option value="Marketing">Marketing</option>
-                  <option value="Salaries/Labor">Salaries/Labor</option>
-                  <option value="Equipment">Equipment</option>
-                  <option value="Fees & Charges">Fees &amp; Charges</option>
-                  <option value="Other">Other</option>
+                <label for="ev-type">Type</label>
+                <select id="ev-type">
+                  <option value="production">Production</option>
+                  <option value="maintenance">Maintenance</option>
+                  <option value="event">Event</option>
+                  <option value="team_building">Team Building</option>
+                  <option value="other">Other</option>
                 </select>
               </div>
               <div class="field">
-                <label for="exp-amount">Amount</label>
-                <input type="number" id="exp-amount" step="0.01" min="0" />
+                <label for="ev-time">Time (optional)</label>
+                <input type="time" id="ev-time" />
               </div>
             </div>
             <div class="field">
-              <label for="exp-date">Date</label>
-              <input type="date" id="exp-date" />
+              <label for="ev-notes">Notes (optional)</label>
+              <textarea id="ev-notes" rows="2"></textarea>
             </div>
-            <div class="field">
-              <label for="exp-note">Note (optional)</label>
-              <textarea id="exp-note" rows="2"></textarea>
-            </div>
-            <button type="button" class="btn" id="save-expense-btn">Add expense</button>
-            <button type="button" class="btn btn-ghost" id="cancel-expense-btn" style="margin-left:8px;">Cancel</button>
+            <button type="button" class="btn btn-sm" id="save-event-btn">Save Event</button>
+            <button type="button" class="btn btn-sm btn-ghost" id="cancel-event-btn" style="margin-left:8px;">Cancel</button>
           </div>
-        </div>
 
-        <div class="card">
-          <div id="expense-list"></div>
-          <div class="empty-state" id="expense-list-empty" style="display:none;">No expenses recorded yet.</div>
-        </div>
-      </div>
-
-      <!-- INCOME TAB -->
-      <div class="tab-panel" id="panel-income">
-        <div class="page-head" style="margin-bottom:16px;">
-          <div><p style="color:var(--muted);font-size:14px;margin:0;">POS sales are added automatically. Use this to log other income (refunds received, investment, etc.)</p></div>
-          <button class="btn" id="toggle-add-income-btn">+ Add Other Income</button>
-        </div>
-
-        <div class="card add-form" id="income-form-card">
-          <div class="card-pad">
-            <h3 style="font-family:Arial,sans-serif;font-weight:700;font-size:16px;margin:0 0 14px;">New income entry</h3>
-            <div id="income-msg" class="msg"></div>
-            <div class="field-row">
-              <div class="field">
-                <label for="inc-category">Source</label>
-                <select id="inc-category">
-                  <option value="Refund">Refund</option>
-                  <option value="Investment">Investment</option>
-                  <option value="Loan">Loan</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="inc-amount">Amount</label>
-                <input type="number" id="inc-amount" step="0.01" min="0" />
-              </div>
+          <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);">
+            <h3 style="margin-bottom:10px;">To-Do</h3>
+            <div id="todo-list"></div>
+            <div class="empty-state" id="todo-empty" style="display:none;padding:10px 0;">No to-dos this day.</div>
+            <div style="display:flex;gap:8px;margin-top:10px;">
+              <input type="text" id="new-todo-input" placeholder="Add a to-do…" style="flex:1;" />
+              <button type="button" class="btn btn-sm" id="add-todo-btn">Add</button>
             </div>
-            <div class="field">
-              <label for="inc-date">Date</label>
-              <input type="date" id="inc-date" />
-            </div>
-            <div class="field">
-              <label for="inc-note">Note (optional)</label>
-              <textarea id="inc-note" rows="2"></textarea>
-            </div>
-            <button type="button" class="btn" id="save-income-btn">Add income</button>
-            <button type="button" class="btn btn-ghost" id="cancel-income-btn" style="margin-left:8px;">Cancel</button>
           </div>
-        </div>
-
-        <div class="card">
-          <div id="income-list"></div>
-          <div class="empty-state" id="income-list-empty" style="display:none;">No other income recorded yet.</div>
         </div>
       </div>
     </main>
@@ -450,275 +427,218 @@
     await supabase.auth.signOut();
     window.location.href = 'login.html';
   }
-  function peso(n){ return '₱' + (Number(n) || 0).toFixed(2); }
-
   let businessId = null;
-  let rangeStart = null;
-  let rangeEnd = null;
+  let viewYear, viewMonth; // viewMonth is 0-indexed
+  let selectedDate = null; // 'YYYY-MM-DD'
+  let monthEvents = [];
+  let monthTodos = [];
 
-  // ---------------- Tabs ----------------
-  document.querySelectorAll('.tab').forEach((tab) => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      tab.classList.add('active');
-      $('panel-' + tab.dataset.tab).classList.add('active');
-      if (tab.dataset.tab === 'overview') loadOverview();
-      if (tab.dataset.tab === 'expenses') loadExpenses();
-      if (tab.dataset.tab === 'income') loadIncome();
-    });
-  });
+  function pad(n){ return String(n).padStart(2, '0'); }
+  function fmtDateKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
 
-  // ---------------- Date range ----------------
-  function fmtISO(d){ return d.toISOString().slice(0, 10); }
+  // ---------------- Load month data ----------------
+  async function loadMonthData(){
+    const firstOfMonth = new Date(viewYear, viewMonth, 1);
+    const startWeekday = firstOfMonth.getDay();
+    const gridStart = new Date(viewYear, viewMonth, 1 - startWeekday);
+    const gridEnd = new Date(gridStart);
+    gridEnd.setDate(gridStart.getDate() + 41);
 
-  function computeRange(preset){
-    const now = new Date();
-    if (preset === 'this_month') {
-      return [new Date(now.getFullYear(), now.getMonth(), 1), new Date(now.getFullYear(), now.getMonth() + 1, 0)];
-    }
-    if (preset === 'last_month') {
-      return [new Date(now.getFullYear(), now.getMonth() - 1, 1), new Date(now.getFullYear(), now.getMonth(), 0)];
-    }
-    if (preset === 'this_year') {
-      return [new Date(now.getFullYear(), 0, 1), new Date(now.getFullYear(), 11, 31)];
-    }
-    return [now, now];
-  }
+    const startIso = gridStart.toISOString();
+    const endIso = new Date(gridEnd.getFullYear(), gridEnd.getMonth(), gridEnd.getDate(), 23, 59, 59).toISOString();
 
-  function applyPreset(){
-    const preset = $('range-preset').value;
-    const isCustom = preset === 'custom';
-    $('range-start').style.display = isCustom ? 'inline-block' : 'none';
-    $('range-to-label').style.display = isCustom ? 'inline' : 'none';
-    $('range-end').style.display = isCustom ? 'inline-block' : 'none';
-
-    if (!isCustom) {
-      const [s, e] = computeRange(preset);
-      rangeStart = fmtISO(s);
-      rangeEnd = fmtISO(e);
-    } else {
-      rangeStart = $('range-start').value || fmtISO(new Date());
-      rangeEnd = $('range-end').value || fmtISO(new Date());
-    }
-    reloadActiveTab();
-  }
-
-  function reloadActiveTab(){
-    const activeTab = document.querySelector('.tab.active').dataset.tab;
-    if (activeTab === 'overview') loadOverview();
-    if (activeTab === 'expenses') loadExpenses();
-    if (activeTab === 'income') loadIncome();
-  }
-
-  $('range-preset').addEventListener('change', applyPreset);
-  $('range-start').addEventListener('change', applyPreset);
-  $('range-end').addEventListener('change', applyPreset);
-
-  // ---------------- Overview ----------------
-  function updateMarginDisplay(totalIncome, net){
-    const el = $('margin-display');
-    if (!totalIncome || totalIncome <= 0) { el.textContent = ''; return; }
-
-    const marginPct = (net / totalIncome) * 100;
-    let label, color;
-    if (marginPct < 0) { label = 'Loss'; color = 'var(--error)'; }
-    else if (marginPct < 10) { label = 'Low'; color = 'var(--warn, #9A6B12)'; }
-    else if (marginPct < 20) { label = 'Fair'; color = 'var(--warn, #9A6B12)'; }
-    else if (marginPct < 35) { label = 'Good'; color = 'var(--success)'; }
-    else { label = 'Healthy'; color = 'var(--success)'; }
-
-    el.innerHTML = `Margin: <strong>${marginPct.toFixed(1)}%</strong> — <span style="color:${color};font-weight:700;">${label}</span>`;
-  }
-
-  async function loadOverview(){
-    const { data: summaryRows } = await supabase.rpc('fn_get_finance_summary', { p_start: rangeStart, p_end: rangeEnd });
-    const summary = (summaryRows && summaryRows[0]) || { pos_income: 0, other_income: 0, total_expenses: 0 };
-
-    const totalIncome = Number(summary.pos_income) + Number(summary.other_income);
-    const net = totalIncome - Number(summary.total_expenses);
-
-    $('sum-income').textContent = peso(totalIncome);
-    $('sum-expenses').textContent = peso(summary.total_expenses);
-    $('sum-net').textContent = peso(net);
-    updateMarginDisplay(totalIncome, net);
-    $('breakdown-pos').textContent = peso(summary.pos_income);
-    $('breakdown-other-income').textContent = peso(summary.other_income);
-
-    const { data: breakdown } = await supabase.rpc('fn_get_expense_breakdown', { p_start: rangeStart, p_end: rangeEnd });
-    const wrap = $('expense-breakdown-list');
-    wrap.innerHTML = '';
-    if (!breakdown || breakdown.length === 0) {
-      $('expense-breakdown-empty').style.display = 'block';
-      return;
-    }
-    $('expense-breakdown-empty').style.display = 'none';
-    const maxAmt = Math.max(...breakdown.map(b => Number(b.total)));
-    breakdown.forEach((b) => {
-      const pct = maxAmt > 0 ? (Number(b.total) / maxAmt) * 100 : 0;
-      const row = document.createElement('div');
-      row.className = 'breakdown-row';
-      row.innerHTML = `
-        <div class="breakdown-label">${b.category}</div>
-        <div class="breakdown-bar-track"><div class="breakdown-bar-fill" style="width:${pct}%;"></div></div>
-        <div class="breakdown-amount">${peso(b.total)}</div>
-      `;
-      wrap.appendChild(row);
-    });
-  }
-
-  // ---------------- Expenses ----------------
-  $('toggle-add-expense-btn').addEventListener('click', () => {
-    $('exp-date').value = fmtISO(new Date());
-    $('expense-form-card').classList.toggle('show');
-  });
-  $('cancel-expense-btn').addEventListener('click', () => {
-    $('expense-form-card').classList.remove('show');
-  });
-
-  $('save-expense-btn').addEventListener('click', async () => {
-    const msg = $('expense-msg');
-    hideMsg(msg);
-    const amount = parseFloat($('exp-amount').value);
-    if (!amount || amount <= 0) { showMsg(msg, 'Enter a valid amount.', 'error'); return; }
-
-    const btn = $('save-expense-btn');
-    btn.disabled = true; btn.textContent = 'Saving…';
-
-    const { error } = await supabase.from('finance_entries').insert({
-      business_id: businessId, entry_type: 'expense',
-      category: $('exp-category').value, amount,
-      entry_date: $('exp-date').value || fmtISO(new Date()),
-      note: $('exp-note').value.trim() || null,
-    });
-
-    btn.disabled = false; btn.textContent = 'Add expense';
-
-    if (error) { showMsg(msg, 'Could not save: ' + error.message, 'error'); return; }
-
-    $('exp-amount').value = '';
-    $('exp-note').value = '';
-    $('expense-form-card').classList.remove('show');
-    loadExpenses();
-  });
-
-  async function loadExpenses(){
-    const { data } = await supabase.rpc('fn_list_finance_entries', { p_entry_type: 'expense', p_limit: 200 });
-    const wrap = $('expense-list');
-    wrap.innerHTML = '';
-    const filtered = (data || []).filter(e => e.entry_date >= rangeStart && e.entry_date <= rangeEnd);
-    if (filtered.length === 0) {
-      $('expense-list-empty').style.display = 'block';
-      return;
-    }
-    $('expense-list-empty').style.display = 'none';
-    filtered.forEach((e) => {
-      const row = document.createElement('div');
-      row.className = 'entry-row';
-      row.innerHTML = `
-        <div>
-          <div><strong>${e.category || 'Uncategorized'}</strong></div>
-          <div style="color:var(--muted);font-size:11.5px;">${e.note ? e.note + ' · ' : ''}${e.entry_date}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div class="entry-amount expense">-${peso(e.amount)}</div>
-          <button type="button" class="entry-delete-btn" data-id="${e.id}" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:16px;">&times;</button>
-        </div>
-      `;
-      row.querySelector('.entry-delete-btn').addEventListener('click', () => deleteEntry(e.id, loadExpenses));
-      wrap.appendChild(row);
-    });
-  }
-
-  // ---------------- Income ----------------
-  $('toggle-add-income-btn').addEventListener('click', () => {
-    $('inc-date').value = fmtISO(new Date());
-    $('income-form-card').classList.toggle('show');
-  });
-  $('cancel-income-btn').addEventListener('click', () => {
-    $('income-form-card').classList.remove('show');
-  });
-
-  $('save-income-btn').addEventListener('click', async () => {
-    const msg = $('income-msg');
-    hideMsg(msg);
-    const amount = parseFloat($('inc-amount').value);
-    if (!amount || amount <= 0) { showMsg(msg, 'Enter a valid amount.', 'error'); return; }
-
-    const btn = $('save-income-btn');
-    btn.disabled = true; btn.textContent = 'Saving…';
-
-    const { error } = await supabase.from('finance_entries').insert({
-      business_id: businessId, entry_type: 'income',
-      category: $('inc-category').value, amount,
-      entry_date: $('inc-date').value || fmtISO(new Date()),
-      note: $('inc-note').value.trim() || null,
-    });
-
-    btn.disabled = false; btn.textContent = 'Add income';
-
-    if (error) { showMsg(msg, 'Could not save: ' + error.message, 'error'); return; }
-
-    $('inc-amount').value = '';
-    $('inc-note').value = '';
-    $('income-form-card').classList.remove('show');
-    loadIncome();
-  });
-
-  async function loadIncome(){
-    const [{ data: entries }, { data: posSales }] = await Promise.all([
-      supabase.rpc('fn_list_finance_entries', { p_entry_type: 'income', p_limit: 200 }),
-      supabase.rpc('fn_list_pos_transactions', { p_limit: 200 }),
+    const [{ data: ev }, { data: td }] = await Promise.all([
+      supabase.from('calendar_events').select('*').gte('start_at', startIso).lte('start_at', endIso),
+      supabase.from('todos').select('*').gte('due_date', fmtDateKey(gridStart)).lte('due_date', fmtDateKey(gridEnd)),
     ]);
+    monthEvents = ev || [];
+    monthTodos = td || [];
+    renderCalendarGrid(gridStart);
+  }
 
-    const wrap = $('income-list');
-    wrap.innerHTML = '';
-
-    const manualRows = (entries || [])
-      .filter(e => e.entry_date >= rangeStart && e.entry_date <= rangeEnd)
-      .map(e => ({ kind: 'manual', date: e.entry_date, label: e.category || 'Other Income', note: e.note, amount: e.amount, id: e.id }));
-
-    const posRows = (posSales || [])
-      .filter(t => t.sale_date >= rangeStart && t.sale_date <= rangeEnd)
-      .map(t => ({ kind: 'pos', date: t.sale_date, label: 'POS Sale' + (t.order_number ? ' — ' + t.order_number : ''), note: t.customer_name, amount: t.total_amount }));
-
-    const combined = [...manualRows, ...posRows].sort((a, b) => b.date.localeCompare(a.date));
-
-    if (combined.length === 0) {
-      $('income-list-empty').style.display = 'block';
-      return;
+  function renderCalendarGrid(gridStart){
+    const dowRow = $('cal-dow-row');
+    if (!dowRow.dataset.built) {
+      ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach((d) => {
+        const el = document.createElement('div');
+        el.className = 'cal-dow';
+        el.textContent = d;
+        dowRow.appendChild(el);
+      });
+      dowRow.dataset.built = '1';
     }
-    $('income-list-empty').style.display = 'none';
 
-    combined.forEach((row) => {
-      const el = document.createElement('div');
-      el.className = 'entry-row';
-      el.innerHTML = `
-        <div>
-          <div><strong>${row.label}</strong></div>
-          <div style="color:var(--muted);font-size:11.5px;">${row.note ? row.note + ' · ' : ''}${row.date}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div class="entry-amount income">+${peso(row.amount)}</div>
-          ${row.kind === 'manual' ? `<button type="button" class="entry-delete-btn" data-id="${row.id}" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:16px;">&times;</button>` : ''}
+    const grid = $('cal-grid');
+    grid.innerHTML = '';
+    const todayKey = fmtDateKey(new Date());
+
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(gridStart);
+      d.setDate(gridStart.getDate() + i);
+      const key = fmtDateKey(d);
+      const cell = document.createElement('div');
+      cell.className = 'cal-cell';
+      if (d.getMonth() !== viewMonth) cell.classList.add('other-month');
+      if (key === todayKey) cell.classList.add('today');
+      if (key === selectedDate) cell.classList.add('selected');
+
+      const dayEvents = monthEvents.filter(e => fmtDateKey(new Date(e.start_at)) === key);
+      const dayTodos = monthTodos.filter(t => t.due_date === key);
+      const doneCount = dayTodos.filter(t => t.is_done).length;
+
+      let html = `<div class="daynum">${d.getDate()}</div>`;
+      dayEvents.slice(0, 2).forEach((e) => {
+        html += `<div class="cal-event-dot ${e.event_type}">${e.title}</div>`;
+      });
+      if (dayEvents.length > 2) html += `<div style="font-size:10px;color:var(--muted);">+${dayEvents.length - 2} more</div>`;
+      if (dayTodos.length > 0) html += `<div class="cal-todo-badge">${doneCount}/${dayTodos.length} done</div>`;
+      cell.innerHTML = html;
+      cell.addEventListener('click', () => { selectedDate = key; renderCalendarGrid(gridStart); renderDayPanel(); });
+      grid.appendChild(cell);
+    }
+
+    $('cal-month-label').textContent = new Date(viewYear, viewMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' });
+  }
+
+  // ---------------- Day panel ----------------
+  function renderDayPanel(){
+    if (!selectedDate) return;
+    const d = new Date(selectedDate + 'T00:00:00');
+    $('day-panel-title').textContent = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    $('event-form').style.display = 'none';
+
+    const dayEvents = monthEvents.filter(e => fmtDateKey(new Date(e.start_at)) === selectedDate);
+    const evList = $('day-events-list');
+    evList.innerHTML = '';
+    $('day-events-empty').style.display = dayEvents.length ? 'none' : 'block';
+    dayEvents.forEach((e) => {
+      const row = document.createElement('div');
+      row.className = 'day-event-row';
+      const time = new Date(e.start_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      row.innerHTML = `
+        <div class="title-row">
+          <div>
+            <span class="cal-event-dot ${e.event_type}">${e.event_type.replace('_', ' ')}</span>
+            <div style="font-weight:600;font-size:13.5px;margin-top:4px;">${e.title}</div>
+            <div class="time">${time}</div>
+            ${e.notes ? `<div class="notes">${e.notes}</div>` : ''}
+          </div>
+          <button class="day-event-del" data-id="${e.id}">&times;</button>
         </div>
       `;
-      if (row.kind === 'manual') {
-        el.querySelector('.entry-delete-btn').addEventListener('click', () => deleteEntry(row.id, loadIncome));
-      }
-      wrap.appendChild(el);
+      row.querySelector('.day-event-del').addEventListener('click', () => deleteEvent(e.id));
+      evList.appendChild(row);
+    });
+
+    const dayTodos = monthTodos.filter(t => t.due_date === selectedDate);
+    const todoList = $('todo-list');
+    todoList.innerHTML = '';
+    $('todo-empty').style.display = dayTodos.length ? 'none' : 'block';
+    dayTodos.forEach((t) => {
+      const row = document.createElement('div');
+      row.className = 'todo-row' + (t.is_done ? ' done' : '');
+      row.innerHTML = `
+        <input type="checkbox" ${t.is_done ? 'checked' : ''} data-id="${t.id}" />
+        <div class="todo-text">${t.title}</div>
+        <button class="todo-del" data-id="${t.id}">&times;</button>
+      `;
+      row.querySelector('input').addEventListener('change', (e) => toggleTodo(t.id, e.target.checked));
+      row.querySelector('.todo-del').addEventListener('click', () => deleteTodo(t.id));
+      todoList.appendChild(row);
     });
   }
 
-  // ---------------- Shared delete ----------------
-  async function deleteEntry(id, reload){
-    const ok = confirm('Delete this entry? This cannot be undone.');
+  // ---------------- Events ----------------
+  $('add-event-btn').addEventListener('click', () => {
+    $('event-form').style.display = 'block';
+    $('ev-title').value = '';
+    $('ev-type').value = 'production';
+    $('ev-time').value = '';
+    $('ev-notes').value = '';
+    hideMsg($('event-msg'));
+  });
+  $('cancel-event-btn').addEventListener('click', () => { $('event-form').style.display = 'none'; });
+
+  $('save-event-btn').addEventListener('click', async () => {
+    const msg = $('event-msg');
+    hideMsg(msg);
+    const title = $('ev-title').value.trim();
+    if (!title) { showMsg(msg, 'Title is required.', 'error'); return; }
+
+    const btn = $('save-event-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    const time = $('ev-time').value || '09:00';
+    const startAt = `${selectedDate}T${time}:00`;
+    const { error } = await supabase.from('calendar_events').insert({
+      business_id: businessId, title, event_type: $('ev-type').value,
+      start_at: startAt, notes: $('ev-notes').value.trim() || null,
+    });
+
+    btn.disabled = false; btn.textContent = 'Save Event';
+
+    if (error) { showMsg(msg, 'Could not save: ' + error.message, 'error'); return; }
+
+    $('event-form').style.display = 'none';
+    await loadMonthData();
+    renderDayPanel();
+  });
+
+  async function deleteEvent(id){
+    const ok = confirm('Delete this event?');
     if (!ok) return;
-    const { error } = await supabase.from('finance_entries').delete().eq('id', id);
+    const { error } = await supabase.from('calendar_events').delete().eq('id', id);
     if (error) { alert('Could not delete: ' + error.message); return; }
-    reload();
-    if (document.querySelector('.tab.active').dataset.tab !== 'overview') loadOverview();
+    await loadMonthData();
+    renderDayPanel();
   }
+
+  // ---------------- To-dos ----------------
+  $('add-todo-btn').addEventListener('click', addTodo);
+  $('new-todo-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') addTodo(); });
+
+  async function addTodo(){
+    const input = $('new-todo-input');
+    const title = input.value.trim();
+    if (!title || !selectedDate) return;
+    const { error } = await supabase.from('todos').insert({ business_id: businessId, title, due_date: selectedDate });
+    if (error) { alert('Could not add: ' + error.message); return; }
+    input.value = '';
+    await loadMonthData();
+    renderDayPanel();
+  }
+
+  async function toggleTodo(id, checked){
+    const { error } = await supabase.from('todos')
+      .update({ is_done: checked, completed_at: checked ? new Date().toISOString() : null })
+      .eq('id', id);
+    if (error) { alert('Could not update: ' + error.message); return; }
+    await loadMonthData();
+    renderDayPanel();
+  }
+
+  async function deleteTodo(id){
+    const { error } = await supabase.from('todos').delete().eq('id', id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    await loadMonthData();
+    renderDayPanel();
+  }
+
+  // ---------------- Month navigation ----------------
+  $('cal-prev').addEventListener('click', () => {
+    viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+    loadMonthData();
+  });
+  $('cal-next').addEventListener('click', () => {
+    viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+    loadMonthData();
+  });
+  $('cal-today-btn').addEventListener('click', () => {
+    const now = new Date();
+    viewYear = now.getFullYear(); viewMonth = now.getMonth();
+    selectedDate = fmtDateKey(now);
+    loadMonthData().then(renderDayPanel);
+  });
 
   // ---------------- Init ----------------
   async function init(){
@@ -742,8 +662,11 @@
     $('who-email').textContent = session.user.email;
     updateSidebarLogo(business.logo_url);
 
-    $('range-preset').value = 'this_month';
-    applyPreset();
+    const now = new Date();
+    viewYear = now.getFullYear(); viewMonth = now.getMonth();
+    selectedDate = fmtDateKey(now);
+    await loadMonthData();
+    renderDayPanel();
 
     $('splash').style.display = 'none';
     $('shell').classList.add('show');
