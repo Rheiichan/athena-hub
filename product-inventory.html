@@ -375,9 +375,10 @@
     data.forEach((p) => {
       const stockClass = p.current_stock <= 0 ? 'stock-zero' : (p.reorder_level && p.current_stock <= p.reorder_level ? 'stock-low' : '');
       const costPerItem = costByProductId[p.id];
+      const isInactive = p.is_active === false;
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${p.name}</td>
+        <td>${p.name}${isInactive ? ' <span style="font-size:10px;font-weight:600;color:var(--muted);background:var(--line);padding:2px 8px;border-radius:99px;">Inactive</span>' : ''}</td>
         <td>${p.sku || '—'}</td>
         <td>${p.category || '—'}</td>
         <td>${costPerItem != null ? peso(costPerItem) : '—'}</td>
@@ -386,10 +387,18 @@
         <td style="white-space:nowrap;">
           <button class="btn btn-sm btn-ghost stock-btn">Adjust</button>
           <button class="btn btn-sm btn-ghost history-btn">History</button>
+          ${isInactive
+            ? `<button class="btn btn-sm btn-ghost reactivate-btn">Reactivate</button>`
+            : `<button class="btn btn-sm btn-ghost delete-btn" style="color:var(--error);">Delete</button>`}
         </td>
       `;
       tr.querySelector('.stock-btn').addEventListener('click', () => openStockModal(p));
       tr.querySelector('.history-btn').addEventListener('click', () => openHistoryModal(p));
+      if (isInactive) {
+        tr.querySelector('.reactivate-btn').addEventListener('click', () => reactivateProduct(p));
+      } else {
+        tr.querySelector('.delete-btn').addEventListener('click', () => deleteProduct(p));
+      }
       tbody.appendChild(tr);
 
       if (costPerItem != null) totalCost += costPerItem * p.current_stock;
@@ -450,6 +459,39 @@
       }
     });
     return costByProductId;
+  }
+
+  // ---------------- Delete / Reactivate ----------------
+  async function deleteProduct(p){
+    const ok = confirm(`Delete "${p.name}"? This removes it and its stock history. This cannot be undone.`);
+    if (!ok) return;
+
+    const { error } = await supabase.from('products').delete().eq('id', p.id);
+
+    if (error) {
+      if (error.message && error.message.toLowerCase().includes('foreign key')) {
+        const deactivate = confirm(
+          `Can't fully delete "${p.name}" — it has POS sales history, which needs to stay for your records.\n\n` +
+          `Mark it inactive instead? It'll disappear from POS and stop being counted, but its history stays intact. You can reactivate it later.`
+        );
+        if (deactivate) {
+          const { error: deactivateError } = await supabase.from('products').update({ is_active: false }).eq('id', p.id);
+          if (deactivateError) { alert('Could not deactivate: ' + deactivateError.message); return; }
+          await loadProducts();
+        }
+      } else {
+        alert('Could not delete: ' + error.message);
+      }
+      return;
+    }
+
+    await loadProducts();
+  }
+
+  async function reactivateProduct(p){
+    const { error } = await supabase.from('products').update({ is_active: true }).eq('id', p.id);
+    if (error) { alert('Could not reactivate: ' + error.message); return; }
+    await loadProducts();
   }
 
   // ---------------- Add product ----------------
