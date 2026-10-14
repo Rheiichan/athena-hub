@@ -338,7 +338,7 @@
             <button type="button" class="btn btn-ghost btn-sm" id="add-labor-row-btn">+ Add staff</button>
 
             <h4 style="font-size:13px;margin:20px 0 8px;">Utilities (optional)</h4>
-            <p class="hint" style="margin:-4px 0 10px;color:var(--muted);font-size:12.5px;">Electricity, water, gas — set up in the Utilities tab. Enter the hours used per batch.</p>
+            <p class="hint" style="margin:-4px 0 10px;color:var(--muted);font-size:12.5px;">Set up appliances once in the Utilities tab (watts and ₱/kWh), then enter how many hours each one runs for this item's batch — the cost is worked out for you.</p>
             <div id="utility-rows"></div>
             <button type="button" class="btn btn-ghost btn-sm" id="add-utility-row-btn">+ Add utility</button>
 
@@ -496,27 +496,13 @@
             <label>How should the cost per hour be set?</label>
             <div class="qty-buttons">
               <button type="button" class="u-mode-btn selected" data-mode="manual">Enter cost/hour</button>
-              <button type="button" class="u-mode-btn" data-mode="monthly_bill">Monthly bill</button>
-              <button type="button" class="u-mode-btn" data-mode="watts">Watts</button>
+              <button type="button" class="u-mode-btn" data-mode="watts">Watts × ₱/kWh</button>
             </div>
 
             <div id="u-manual-fields">
               <div class="field">
                 <label for="u-cost-hour">Cost per hour (₱)</label>
                 <input type="number" id="u-cost-hour" step="0.0001" min="0" />
-              </div>
-            </div>
-
-            <div id="u-bill-fields" style="display:none;">
-              <div class="field-row">
-                <div class="field">
-                  <label for="u-bill">Monthly bill (₱)</label>
-                  <input type="number" id="u-bill" step="0.01" min="0" />
-                </div>
-                <div class="field">
-                  <label for="u-hours">Hours used per month</label>
-                  <input type="number" id="u-hours" step="0.01" min="0" placeholder="e.g. 160" />
-                </div>
               </div>
             </div>
 
@@ -527,27 +513,11 @@
                   <input type="number" id="u-watts" step="0.01" min="0" placeholder="e.g. 2000" />
                 </div>
                 <div class="field">
-                  <label for="u-rate-source">Electricity rate</label>
-                  <select id="u-rate-source">
-                    <option value="rate">I know the ₱ per kWh</option>
-                    <option value="bill">Work it out from my bill</option>
-                  </select>
+                  <label for="u-rate">Electricity rate (₱ per kWh)</label>
+                  <input type="number" id="u-rate" step="0.0001" min="0" placeholder="e.g. 12.50" />
                 </div>
               </div>
-              <div id="u-rate-direct" class="field">
-                <label for="u-rate">Rate (₱ per kWh)</label>
-                <input type="number" id="u-rate" step="0.0001" min="0" placeholder="e.g. 12.50" />
-              </div>
-              <div id="u-rate-bill" class="field-row" style="display:none;">
-                <div class="field">
-                  <label for="u-bill2">Monthly electric bill (₱)</label>
-                  <input type="number" id="u-bill2" step="0.01" min="0" />
-                </div>
-                <div class="field">
-                  <label for="u-kwh">kWh used that month</label>
-                  <input type="number" id="u-kwh" step="0.01" min="0" />
-                </div>
-              </div>
+              <p class="hint" style="margin:-6px 0 14px;color:var(--muted);font-size:12.5px;">Cost per hour = watts ÷ 1000 × rate. Check the per-kWh rate on your electric bill.</p>
             </div>
 
             <p class="hint" id="u-computed" style="margin:0 0 14px;font-size:13px;font-weight:600;color:var(--accent-ink);"></p>
@@ -1301,7 +1271,15 @@
     utilityRows.forEach((row, idx) => {
       const info = document.getElementById(`util-row-info-${idx}`);
       if (!info) return;
-      info.textContent = row.utility_id ? `${peso(utilityCostFor(row))} per batch` : '';
+      const u = allUtilities.find(x => x.id === row.utility_id);
+      const hrs = parseFloat(row.hours_per_batch) || 0;
+      if (!u) { info.textContent = ''; return; }
+      if (u.calc_mode === 'watts' && u.watts && u.rate_per_kwh) {
+        const kwh = (Number(u.watts) / 1000) * hrs;
+        info.textContent = `${u.watts} W × ${hrs} hr = ${kwh.toFixed(2)} kWh × ${peso(u.rate_per_kwh)}/kWh = ${peso(utilityCostFor(row))} per batch`;
+      } else {
+        info.textContent = `${hrs} hr × ${peso(u.cost_per_hour)}/hr = ${peso(utilityCostFor(row))} per batch`;
+      }
     });
   }
 
@@ -1612,7 +1590,7 @@
     const lines = ris.map((ri) => {
       const mat = allMaterials.find(m => m.id === ri.ingredient_id);
       if (!mat) return '';
-      const actualQty = (produceTarget.batch_mode === 'percentage' ? (ri.quantity / 100) * (produceTarget.yield_qty || 0) : ri.quantity) * batches;
+      const actualQty = (produceTarget.batch_mode === 'percentage' && !isPackagingMaterial(ri.ingredient_id) ? (ri.quantity / 100) * (produceTarget.yield_qty || 0) : ri.quantity) * batches;
       const short = actualQty > mat.current_stock;
       return `${mat.name}: ${actualQty.toFixed(3)} ${mat.unit}${short ? ` ⚠ only ${mat.current_stock} in stock` : ''}`;
     }).filter(Boolean);
@@ -1775,15 +1753,14 @@
   // ---------------- Utilities tab ----------------
   let editingUtilityId = null;
   let utilMode = 'manual';
-  const MODE_LABEL = { manual: 'Entered manually', monthly_bill: 'Monthly bill ÷ hours', watts: 'Watts × rate' };
+  const MODE_LABEL = { manual: 'Entered manually', watts: 'Watts × rate' };
 
   function computeUtilityDraft(){
     const n = (id) => parseFloat($(id).value) || 0;
     let cph = 0, rate = null;
     if (utilMode === 'manual') cph = n('u-cost-hour');
-    else if (utilMode === 'monthly_bill') cph = n('u-hours') > 0 ? n('u-bill') / n('u-hours') : 0;
     else {
-      rate = $('u-rate-source').value === 'bill' ? (n('u-kwh') > 0 ? n('u-bill2') / n('u-kwh') : 0) : n('u-rate');
+      rate = n('u-rate');
       cph = (n('u-watts') / 1000) * rate;
     }
     return { cph, rate };
@@ -1800,38 +1777,24 @@
     utilMode = mode;
     document.querySelectorAll('.u-mode-btn').forEach(b => b.classList.toggle('selected', b.dataset.mode === mode));
     $('u-manual-fields').style.display = mode === 'manual' ? 'block' : 'none';
-    $('u-bill-fields').style.display = mode === 'monthly_bill' ? 'block' : 'none';
     $('u-watts-fields').style.display = mode === 'watts' ? 'block' : 'none';
     updateUtilityComputed();
   }
   document.querySelectorAll('.u-mode-btn').forEach(b => b.addEventListener('click', () => setUtilMode(b.dataset.mode)));
-  ['u-cost-hour','u-bill','u-hours','u-watts','u-rate','u-bill2','u-kwh'].forEach(id => $(id).addEventListener('input', updateUtilityComputed));
-  $('u-rate-source').addEventListener('change', () => {
-    const bill = $('u-rate-source').value === 'bill';
-    $('u-rate-direct').style.display = bill ? 'none' : 'block';
-    $('u-rate-bill').style.display = bill ? 'grid' : 'none';
-    updateUtilityComputed();
-  });
-
+  ['u-cost-hour','u-watts','u-rate'].forEach(id => $(id).addEventListener('input', updateUtilityComputed));
   function openUtilityEditor(u){
     editingUtilityId = u ? u.id : null;
     $('utility-editor-title').textContent = u ? `Edit — ${u.name}` : 'New utility';
     hideMsg($('utility-msg'));
     $('u-name').value = u ? u.name : '';
     $('u-cost-hour').value = u && u.calc_mode === 'manual' ? u.cost_per_hour : '';
-    $('u-bill').value = u && u.calc_mode === 'monthly_bill' ? (u.monthly_bill ?? '') : '';
-    $('u-hours').value = u && u.calc_mode === 'monthly_bill' ? (u.monthly_hours ?? '') : '';
     $('u-watts').value = u && u.calc_mode === 'watts' ? (u.watts ?? '') : '';
-    const viaBill = !!(u && u.calc_mode === 'watts' && u.monthly_bill && u.monthly_kwh);
-    $('u-rate-source').value = viaBill ? 'bill' : 'rate';
-    $('u-rate').value = u && u.calc_mode === 'watts' && !viaBill ? (u.rate_per_kwh ?? '') : '';
-    $('u-bill2').value = viaBill ? u.monthly_bill : '';
-    $('u-kwh').value = viaBill ? u.monthly_kwh : '';
-    $('u-rate-direct').style.display = viaBill ? 'none' : 'block';
-    $('u-rate-bill').style.display = viaBill ? 'grid' : 'none';
+    $('u-rate').value = u && u.calc_mode === 'watts' ? (u.rate_per_kwh ?? '') : '';
     $('u-notes').value = u ? (u.notes || '') : '';
     $('u-active').checked = u ? !!u.is_active : true;
-    setUtilMode(u ? u.calc_mode : 'manual');
+    // Older 'monthly bill' utilities keep their saved cost per hour and are edited as manual.
+    if (u && u.calc_mode === 'monthly_bill') $('u-cost-hour').value = u.cost_per_hour;
+    setUtilMode(u && u.calc_mode === 'watts' ? 'watts' : 'manual');
     $('utility-editor-card').classList.add('show');
     $('utility-editor-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -1846,15 +1809,14 @@
     const { cph, rate } = computeUtilityDraft();
     if (!(cph > 0)) return showMsg(msg, 'The cost per hour works out to zero — please check the numbers.', 'error');
     const n = (id) => parseFloat($(id).value);
-    const viaBill = utilMode === 'watts' && $('u-rate-source').value === 'bill';
     const row = {
       name,
       calc_mode: utilMode,
-      monthly_bill: utilMode === 'monthly_bill' ? n('u-bill') : (viaBill ? n('u-bill2') : null),
-      monthly_hours: utilMode === 'monthly_bill' ? n('u-hours') : null,
+      monthly_bill: null,
+      monthly_hours: null,
       watts: utilMode === 'watts' ? n('u-watts') : null,
       rate_per_kwh: utilMode === 'watts' ? Math.round(rate * 10000) / 10000 : null,
-      monthly_kwh: viaBill ? n('u-kwh') : null,
+      monthly_kwh: null,
       cost_per_hour: Math.round(cph * 10000) / 10000,
       notes: $('u-notes').value.trim() || null,
       is_active: $('u-active').checked,
@@ -1890,7 +1852,7 @@
     $('utility-empty').style.display = allUtilities.length ? 'none' : 'block';
     allUtilities.forEach((u) => {
       let basis = MODE_LABEL[u.calc_mode] || '';
-      if (u.calc_mode === 'monthly_bill') basis = `${peso(u.monthly_bill)} ÷ ${u.monthly_hours} hrs/month`;
+      if (u.calc_mode === 'monthly_bill') basis = 'Entered manually';
       if (u.calc_mode === 'watts') basis = `${u.watts} W × ${peso(u.rate_per_kwh)}/kWh`;
       const tr = document.createElement('tr');
       tr.innerHTML = `
