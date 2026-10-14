@@ -174,7 +174,6 @@
       </a>
       <a class="nav-item" href="employees.html">
         <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><circle cx="17.5" cy="9" r="2.3"/><path d="M15 20a4.5 4.5 0 0 1 6.5-4"/></svg>Employees</span>
-        <span class="soon">Soon</span>
       </a>
 
       <p class="nav-section-label">Setup</p>
@@ -421,12 +420,16 @@
     const recipeIds = (productLinks || []).map(p => p.recipe_id).filter(Boolean);
     if (recipeIds.length === 0) return {};
 
-    const [{ data: recipeRows }, { data: riRows }, { data: reRows }, { data: materials }, { data: equipmentRows }] = await Promise.all([
+    const [{ data: recipeRows }, { data: riRows }, { data: reRows }, { data: materials }, { data: equipmentRows }, { data: rlRows }, { data: ruRows }, { data: empRows }, { data: utilRows }] = await Promise.all([
       supabase.from('recipes').select('id, yield_qty, batch_mode').in('id', recipeIds),
       supabase.from('recipe_ingredients').select('*'),
       supabase.from('recipe_equipment').select('*'),
       supabase.rpc('fn_list_ingredients_with_stock'),
       supabase.from('equipment').select('id, cost_per_use'),
+      supabase.from('recipe_labor').select('*'),
+      supabase.from('recipe_utilities').select('*'),
+      supabase.from('employees').select('id, daily_rate'),
+      supabase.from('utilities').select('id, cost_per_hour'),
     ]);
 
     const recipeCostById = {};
@@ -438,7 +441,8 @@
       ris.forEach((ri) => {
         const mat = (materials || []).find(m => m.id === ri.ingredient_id);
         if (!mat) return;
-        const actualQty = r.batch_mode === 'percentage' ? (ri.quantity / 100) * (r.yield_qty || 0) : ri.quantity;
+        const isPack = mat.category === 'Containers' || mat.category === 'Packaging';
+        const actualQty = (r.batch_mode === 'percentage' && !isPack) ? (ri.quantity / 100) * (r.yield_qty || 0) : ri.quantity;
         materialsCost += actualQty * (mat.cost_per_unit || 0);
       });
 
@@ -449,7 +453,20 @@
         equipmentCost += re.uses_per_batch * (eq.cost_per_use || 0);
       });
 
-      recipeCostById[r.id] = r.yield_qty > 0 ? (materialsCost + equipmentCost) / r.yield_qty : null;
+      let laborCost = 0;
+      (rlRows || []).filter(rl => rl.recipe_id === r.id).forEach((rl) => {
+        const emp = (empRows || []).find(e => e.id === rl.employee_id);
+        if (rl.day_portion === 'manual' || !emp) laborCost += Number(rl.rate) || 0;
+        else laborCost += (Number(emp.daily_rate) || 0) * (rl.day_portion === 'half' ? 0.5 : 1);
+      });
+
+      let utilitiesCost = 0;
+      (ruRows || []).filter(ru => ru.recipe_id === r.id).forEach((ru) => {
+        const u = (utilRows || []).find(x => x.id === ru.utility_id);
+        if (u) utilitiesCost += (Number(ru.hours_per_batch) || 0) * (Number(u.cost_per_hour) || 0);
+      });
+
+      recipeCostById[r.id] = r.yield_qty > 0 ? (materialsCost + equipmentCost + laborCost + utilitiesCost) / r.yield_qty : null;
     });
 
     const costByProductId = {};

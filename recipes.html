@@ -139,6 +139,19 @@
   .row-item .row-cost{font-size:12.5px;color:var(--muted);text-align:right;}
   .row-remove{background:none;border:none;color:var(--error);cursor:pointer;font-size:18px;line-height:1;padding:4px 8px;}
 
+  .labor-row{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;background:var(--bg);}
+  .labor-portion{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:8px;}
+  .labor-portion label.radio{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;margin:0;cursor:pointer;}
+  .labor-portion .row-remove{margin-left:auto;}
+  .labor-fields{display:grid;grid-template-columns:2fr 1fr;gap:8px;}
+  @media (max-width:560px){ .labor-fields{grid-template-columns:1fr;} }
+  .pricing-guide{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:0 0 16px;}
+  .pricing-guide h4{font-size:13px;margin:0 0 10px;}
+  .rec-price{font-family:Arial,sans-serif;font-weight:700;font-size:22px;color:var(--accent-ink);padding:6px 0;}
+  .rating-scale{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.7;}
+  .rating-chip{font-weight:700;}
+  .tier-rating{font-size:12px;margin:-4px 0 10px;}
+  .badge-inactive{font-size:10.5px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:99px;background:var(--line);color:var(--muted);margin-left:6px;}
   .summary-box{background:var(--accent-soft);border-radius:10px;padding:16px 18px;margin:16px 0;}
   .summary-line{display:flex;justify-content:space-between;font-size:13.5px;padding:3px 0;color:var(--accent-ink);}
   .summary-line.total{font-weight:700;font-size:15px;border-top:1px solid rgba(0,0,0,.1);margin-top:6px;padding-top:8px;}
@@ -210,7 +223,6 @@
       </a>
       <a class="nav-item" href="employees.html">
         <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><circle cx="17.5" cy="9" r="2.3"/><path d="M15 20a4.5 4.5 0 0 1 6.5-4"/></svg>Employees</span>
-        <span class="soon">Soon</span>
       </a>
 
       <p class="nav-section-label">Setup</p>
@@ -250,6 +262,7 @@
       <div class="tabs">
         <div class="tab active" data-tab="recipes">Items</div>
         <div class="tab" data-tab="equipment">Equipment</div>
+        <div class="tab" data-tab="utilities">Utilities</div>
       </div>
 
       <!-- RECIPES TAB -->
@@ -319,12 +332,41 @@
             <div id="equipment-rows"></div>
             <button type="button" class="btn btn-ghost btn-sm" id="add-equipment-row-btn">+ Add equipment</button>
 
+            <h4 style="font-size:13px;margin:20px 0 8px;">Staff in charge (optional)</h4>
+            <p class="hint" style="margin:-4px 0 10px;color:var(--muted);font-size:12.5px;">Pick a recorded employee for a full or half day of their daily rate, or enter a name and rate manually for part-timers who aren't in Employees.</p>
+            <div id="labor-rows"></div>
+            <button type="button" class="btn btn-ghost btn-sm" id="add-labor-row-btn">+ Add staff</button>
+
+            <h4 style="font-size:13px;margin:20px 0 8px;">Utilities (optional)</h4>
+            <p class="hint" style="margin:-4px 0 10px;color:var(--muted);font-size:12.5px;">Electricity, water, gas — set up in the Utilities tab. Enter the hours used per batch.</p>
+            <div id="utility-rows"></div>
+            <button type="button" class="btn btn-ghost btn-sm" id="add-utility-row-btn">+ Add utility</button>
+
             <div class="summary-box" id="cost-summary">
               <div class="summary-line"><span>Materials cost</span><span id="sum-materials">₱0.00</span></div>
               <div class="summary-line"><span>Packaging cost</span><span id="sum-packaging">₱0.00</span></div>
               <div class="summary-line"><span>Equipment cost</span><span id="sum-equipment">₱0.00</span></div>
+              <div class="summary-line"><span>Labor cost</span><span id="sum-labor">₱0.00</span></div>
+              <div class="summary-line"><span>Utilities cost</span><span id="sum-utilities">₱0.00</span></div>
               <div class="summary-line total"><span>Total cost per batch</span><span id="sum-total">₱0.00</span></div>
               <div class="summary-line"><span>Cost per <span id="sum-unit-label">unit</span></span><span id="sum-per-unit">₱0.00</span></div>
+            </div>
+
+            <div class="pricing-guide" id="pricing-guide">
+              <h4>Pricing guide</h4>
+              <div class="field-row">
+                <div class="field">
+                  <label for="target-markup">Your target markup (%)</label>
+                  <input type="number" id="target-markup" value="100" min="0" step="1" />
+                </div>
+                <div class="field">
+                  <label>Recommended retail price per <span id="rec-unit-label">unit</span></label>
+                  <div class="rec-price" id="rec-price">₱0.00</div>
+                </div>
+              </div>
+              <p class="hint" id="target-rating" style="margin:0 0 10px;font-size:12.5px;"></p>
+              <button type="button" class="btn btn-ghost btn-sm" id="use-rec-price-btn">Use as POS price</button>
+              <div class="rating-scale">Rating by markup over cost: <span class="rating-chip" style="color:var(--error);">Loss</span> below 0% · <span class="rating-chip" style="color:var(--error);">Poor</span> 0–19% · <span class="rating-chip" style="color:var(--warn);">Fair</span> 20–49% · <span class="rating-chip" style="color:var(--success);">Good</span> 50–99% · <span class="rating-chip" style="color:var(--success);">Excellent</span> 100%+. Cost includes materials, packaging, equipment, labor and utilities.</div>
             </div>
 
             <div class="toggle-row">
@@ -434,6 +476,104 @@
           <div class="empty-state" id="equipment-empty" style="display:none;">No equipment logged yet.</div>
         </div>
       </div>
+
+      <!-- UTILITIES TAB -->
+      <div class="tab-panel" id="panel-utilities">
+        <div class="page-head" style="margin-bottom:16px;">
+          <div><p style="color:var(--muted);font-size:14px;margin:0;">Electricity, water, gas and other running costs, turned into a cost per hour.</p></div>
+          <button class="btn" id="toggle-add-utility-btn">+ Add Utility</button>
+        </div>
+
+        <div class="card add-form" id="utility-editor-card">
+          <div class="card-pad">
+            <h3 id="utility-editor-title" style="font-family:Arial,sans-serif;font-weight:600;font-size:16px;margin:0 0 14px;">New utility</h3>
+            <div id="utility-msg" class="msg"></div>
+            <div class="field">
+              <label for="u-name">Utility name</label>
+              <input type="text" id="u-name" placeholder="e.g. Electricity — Oven" />
+            </div>
+
+            <label>How should the cost per hour be set?</label>
+            <div class="qty-buttons">
+              <button type="button" class="u-mode-btn selected" data-mode="manual">Enter cost/hour</button>
+              <button type="button" class="u-mode-btn" data-mode="monthly_bill">Monthly bill</button>
+              <button type="button" class="u-mode-btn" data-mode="watts">Watts</button>
+            </div>
+
+            <div id="u-manual-fields">
+              <div class="field">
+                <label for="u-cost-hour">Cost per hour (₱)</label>
+                <input type="number" id="u-cost-hour" step="0.0001" min="0" />
+              </div>
+            </div>
+
+            <div id="u-bill-fields" style="display:none;">
+              <div class="field-row">
+                <div class="field">
+                  <label for="u-bill">Monthly bill (₱)</label>
+                  <input type="number" id="u-bill" step="0.01" min="0" />
+                </div>
+                <div class="field">
+                  <label for="u-hours">Hours used per month</label>
+                  <input type="number" id="u-hours" step="0.01" min="0" placeholder="e.g. 160" />
+                </div>
+              </div>
+            </div>
+
+            <div id="u-watts-fields" style="display:none;">
+              <div class="field-row">
+                <div class="field">
+                  <label for="u-watts">Appliance power (watts)</label>
+                  <input type="number" id="u-watts" step="0.01" min="0" placeholder="e.g. 2000" />
+                </div>
+                <div class="field">
+                  <label for="u-rate-source">Electricity rate</label>
+                  <select id="u-rate-source">
+                    <option value="rate">I know the ₱ per kWh</option>
+                    <option value="bill">Work it out from my bill</option>
+                  </select>
+                </div>
+              </div>
+              <div id="u-rate-direct" class="field">
+                <label for="u-rate">Rate (₱ per kWh)</label>
+                <input type="number" id="u-rate" step="0.0001" min="0" placeholder="e.g. 12.50" />
+              </div>
+              <div id="u-rate-bill" class="field-row" style="display:none;">
+                <div class="field">
+                  <label for="u-bill2">Monthly electric bill (₱)</label>
+                  <input type="number" id="u-bill2" step="0.01" min="0" />
+                </div>
+                <div class="field">
+                  <label for="u-kwh">kWh used that month</label>
+                  <input type="number" id="u-kwh" step="0.01" min="0" />
+                </div>
+              </div>
+            </div>
+
+            <p class="hint" id="u-computed" style="margin:0 0 14px;font-size:13px;font-weight:600;color:var(--accent-ink);"></p>
+
+            <div class="field">
+              <label for="u-notes">Notes (optional)</label>
+              <textarea id="u-notes" rows="2"></textarea>
+            </div>
+            <div class="toggle-row" style="margin-top:0;">
+              <input type="checkbox" id="u-active" checked style="width:16px;height:16px;" />
+              <label for="u-active" style="margin:0;font-size:13.5px;font-weight:500;">Active (available when building items)</label>
+            </div>
+
+            <button type="button" class="btn" id="save-utility-btn">Save utility</button>
+            <button type="button" class="btn btn-ghost" id="cancel-utility-btn" style="margin-left:8px;">Cancel</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <table>
+            <thead><tr><th>Utility</th><th>Based on</th><th>Cost/Hour</th><th></th></tr></thead>
+            <tbody id="utility-tbody"></tbody>
+          </table>
+          <div class="empty-state" id="utility-empty" style="display:none;">No utilities yet — add electricity, water or gas to include them in your costing.</div>
+        </div>
+      </div>
     </main>
   </div>
 </div>
@@ -533,6 +673,12 @@
   let recipes = [];
   let recipeIngredientsMap = {}; // recipe_id -> [{ingredient_id, quantity, unit}]
   let recipeEquipmentMap = {};   // recipe_id -> [{equipment_id, uses_per_batch}]
+  let allEmployees = [];
+  let allUtilities = [];
+  let recipeLaborMap = {};       // recipe_id -> [{employee_id, staff_name, day_portion, rate}]
+  let recipeUtilitiesMap = {};   // recipe_id -> [{utility_id, hours_per_batch}]
+  let laborRows = [];            // working state: {employee_id, staff_name, day_portion, rate}
+  let utilityRows = [];          // working state: {utility_id, hours_per_batch}
 
   let editingRecipeId = null;
   let batchMode = 'quantity';
@@ -566,6 +712,15 @@
     allEquipment = data || [];
     renderEquipmentTable();
   }
+  async function loadEmployeesList(){
+    const { data } = await supabase.from('employees').select('*').order('full_name');
+    allEmployees = data || [];
+  }
+  async function loadUtilitiesList(){
+    const { data } = await supabase.from('utilities').select('*').order('name');
+    allUtilities = data || [];
+    renderUtilityTable();
+  }
   async function loadProductsList(){
     const { data } = await supabase.from('products').select('id, name, recipe_id, price');
     allProducts = data || [];
@@ -578,6 +733,8 @@
 
     const { data: riRows } = await supabase.from('recipe_ingredients').select('*');
     const { data: reRows } = await supabase.from('recipe_equipment').select('*');
+    const { data: rlRows } = await supabase.from('recipe_labor').select('*');
+    const { data: ruRows } = await supabase.from('recipe_utilities').select('*');
 
     recipeIngredientsMap = {};
     (riRows || []).forEach((r) => {
@@ -588,21 +745,56 @@
       (recipeEquipmentMap[r.recipe_id] ||= []).push(r);
     });
 
+    recipeLaborMap = {};
+    (rlRows || []).forEach((r) => { (recipeLaborMap[r.recipe_id] ||= []).push(r); });
+    recipeUtilitiesMap = {};
+    (ruRows || []).forEach((r) => { (recipeUtilitiesMap[r.recipe_id] ||= []).push(r); });
+
     renderRecipeList();
+  }
+
+  // ---------- Labor / utilities / rating helpers ----------
+  function laborCostFor(row){
+    if (row.day_portion === 'manual' || !row.employee_id) return parseFloat(row.rate) || 0;
+    const emp = allEmployees.find(e => e.id === row.employee_id);
+    if (!emp) return parseFloat(row.rate) || 0;   // fall back to the saved amount
+    const daily = Number(emp.daily_rate) || 0;
+    return row.day_portion === 'half' ? daily / 2 : daily;
+  }
+  function utilityCostFor(row){
+    const u = allUtilities.find(x => x.id === row.utility_id);
+    return u ? (parseFloat(row.hours_per_batch) || 0) * (Number(u.cost_per_hour) || 0) : 0;
+  }
+  function rateMarkup(pct){
+    if (pct < 0) return { label: 'Loss', color: 'var(--error)', note: 'price is below cost' };
+    if (pct < 20) return { label: 'Poor', color: 'var(--error)', note: 'very thin markup' };
+    if (pct < 50) return { label: 'Fair', color: 'var(--warn, #9A6B12)', note: '' };
+    if (pct < 100) return { label: 'Good', color: 'var(--success)', note: '' };
+    return { label: 'Excellent', color: 'var(--success)', note: '' };
+  }
+  function ratingHtml(price, cost){
+    if (!(price > 0) || !(cost > 0)) return '';
+    const markup = ((price - cost) / cost) * 100;
+    const margin = ((price - cost) / price) * 100;
+    const r = rateMarkup(markup);
+    return `Markup <strong>${markup.toFixed(0)}%</strong> · Margin ${margin.toFixed(0)}% — <span style="color:${r.color};font-weight:700;">${r.label}</span>${r.note ? ` <span style="color:var(--muted);">(${r.note})</span>` : ''}`;
   }
 
   function computeRecipeCost(recipe){
     const ris = recipeIngredientsMap[recipe.id] || [];
     const res = recipeEquipmentMap[recipe.id] || [];
-    let materialsCost = 0, shortages = [];
+    let materialsCost = 0, packagingCost = 0, shortages = [];
 
     ris.forEach((ri) => {
       const mat = allMaterials.find(m => m.id === ri.ingredient_id);
       if (!mat) return;
-      const actualQty = recipe.batch_mode === 'percentage'
+      const isPack = isPackagingMaterial(ri.ingredient_id);
+      // Packaging is always a literal quantity; materials follow the item's batch mode.
+      const actualQty = (recipe.batch_mode === 'percentage' && !isPack)
         ? (ri.quantity / 100) * (recipe.yield_qty || 0)
         : ri.quantity;
-      materialsCost += actualQty * (mat.cost_per_unit || 0);
+      const lineCost = actualQty * (mat.cost_per_unit || 0);
+      if (isPack) packagingCost += lineCost; else materialsCost += lineCost;
       if (actualQty > mat.current_stock) {
         shortages.push({ name: mat.name, short: actualQty - mat.current_stock, unit: mat.unit });
       }
@@ -615,9 +807,12 @@
       equipmentCost += re.uses_per_batch * (eq.cost_per_use || 0);
     });
 
-    const total = materialsCost + equipmentCost;
+    const laborCost = (recipeLaborMap[recipe.id] || []).reduce((a, r) => a + laborCostFor(r), 0);
+    const utilitiesCost = (recipeUtilitiesMap[recipe.id] || []).reduce((a, r) => a + utilityCostFor(r), 0);
+
+    const total = materialsCost + packagingCost + equipmentCost + laborCost + utilitiesCost;
     const perUnit = recipe.yield_qty > 0 ? total / recipe.yield_qty : 0;
-    return { materialsCost, equipmentCost, total, perUnit, shortages };
+    return { materialsCost, packagingCost, equipmentCost, laborCost, utilitiesCost, total, perUnit, shortages };
   }
 
   function renderRecipeList(){
@@ -639,6 +834,7 @@
           <div>
             <h3>${r.name}${linkedProduct ? ' <span style="font-size:11px;font-weight:600;color:var(--accent-ink);background:var(--accent-soft);padding:2px 8px;border-radius:99px;">In POS</span>' : ''}</h3>
             <div class="meta">Makes ${r.yield_qty || 0} ${r.yield_unit || ''} · ${r.batch_mode === 'percentage' ? 'By %' : 'By quantity'} · ${peso(cost.perUnit)}/${r.yield_unit || 'unit'}</div>
+            <div class="meta" style="margin-top:4px;">Materials ${peso(cost.materialsCost)} · Packaging ${peso(cost.packagingCost)} · Equipment ${peso(cost.equipmentCost)} · Labor ${peso(cost.laborCost)} · Utilities ${peso(cost.utilitiesCost)}</div>
             ${cost.shortages.length ? `<button type="button" class="shortage-tag shortage-check-btn" data-recipe-id="${r.id}" style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;background:none;border:none;padding:0;cursor:pointer;text-decoration:underline;font-family:inherit;">⚠ Short on ${cost.shortages.length} material(s) — check materials</button>` : ''}
           </div>
           <div class="recipe-cost-pill">${peso(cost.total)} / batch</div>
@@ -711,6 +907,13 @@
       ? (recipeEquipmentMap[recipe.id] || []).map(re => ({ equipment_id: re.equipment_id, uses_per_batch: re.uses_per_batch }))
       : [];
 
+    laborRows = recipe
+      ? (recipeLaborMap[recipe.id] || []).map(rl => ({ employee_id: rl.employee_id || '', staff_name: rl.staff_name || '', day_portion: rl.day_portion, rate: rl.rate }))
+      : [];
+    utilityRows = recipe
+      ? (recipeUtilitiesMap[recipe.id] || []).map(ru => ({ utility_id: ru.utility_id, hours_per_batch: ru.hours_per_batch }))
+      : [];
+
     const linkedProduct = recipe ? allProducts.find(p => p.recipe_id === recipe.id) : null;
     $('add-to-pos-toggle').checked = !!linkedProduct;
     $('pos-fields').style.display = linkedProduct ? 'block' : 'none';
@@ -727,6 +930,8 @@
     renderIngredientRows();
     renderPackagingRows();
     renderEquipmentRowsInEditor();
+    renderLaborRows();
+    renderUtilityRows();
     renderTierRows();
     $('recipe-editor-card').classList.add('show');
     $('recipe-editor-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -988,6 +1193,118 @@
     });
   }
 
+  // ---------------- Staff in charge (labor) rows ----------------
+  $('add-labor-row-btn').addEventListener('click', () => {
+    laborRows.push({ employee_id: '', staff_name: '', day_portion: 'full', rate: '' });
+    renderLaborRows();
+  });
+
+  function renderLaborRows(){
+    const wrap = $('labor-rows');
+    wrap.innerHTML = '';
+    laborRows.forEach((row, idx) => {
+      const selectable = allEmployees.filter(e => e.status === 'active' || e.id === row.employee_id);
+      const div = document.createElement('div');
+      div.className = 'labor-row';
+      const manual = row.day_portion === 'manual';
+      div.innerHTML = `
+        <div class="labor-portion">
+          <label class="radio"><input type="radio" name="lp-${idx}" value="full" ${row.day_portion === 'full' ? 'checked' : ''} /> Full day</label>
+          <label class="radio"><input type="radio" name="lp-${idx}" value="half" ${row.day_portion === 'half' ? 'checked' : ''} /> Half day</label>
+          <label class="radio"><input type="radio" name="lp-${idx}" value="manual" ${manual ? 'checked' : ''} /> Manually add</label>
+          <button type="button" class="row-remove" data-idx="${idx}" aria-label="Remove">&times;</button>
+        </div>
+        ${manual ? `
+          <div class="labor-fields">
+            <input type="text" class="rl-name" data-idx="${idx}" placeholder="Staff name" value="${(row.staff_name || '').replace(/"/g, '&quot;')}" />
+            <input type="number" class="rl-rate" data-idx="${idx}" step="0.01" min="0" placeholder="Rate (₱)" value="${row.rate ?? ''}" />
+          </div>` : `
+          <div class="labor-fields" style="grid-template-columns:1fr;">
+            <select class="rl-emp" data-idx="${idx}">
+              <option value="">Select employee…</option>
+              ${selectable.map(e => `<option value="${e.id}" ${e.id === row.employee_id ? 'selected' : ''}>${e.full_name}${e.position ? ' — ' + e.position : ''} (${peso(e.daily_rate)}/day)</option>`).join('')}
+            </select>
+          </div>`}
+        <div class="labor-info" id="labor-info-${idx}" style="font-size:11.5px;color:var(--muted);margin-top:6px;"></div>
+      `;
+      wrap.appendChild(div);
+    });
+
+    wrap.querySelectorAll('.labor-row').forEach((div, idx) => {
+      div.querySelectorAll('input[type=radio]').forEach((r) => r.addEventListener('change', (e) => {
+        laborRows[idx].day_portion = e.target.value;
+        if (e.target.value === 'manual') laborRows[idx].employee_id = '';
+        renderLaborRows();
+      }));
+      const emp = div.querySelector('.rl-emp');
+      if (emp) emp.addEventListener('change', (e) => { laborRows[idx].employee_id = e.target.value; updateLaborInfo(); updateSummary(); });
+      const nm = div.querySelector('.rl-name');
+      if (nm) nm.addEventListener('input', (e) => { laborRows[idx].staff_name = e.target.value; });
+      const rt = div.querySelector('.rl-rate');
+      if (rt) rt.addEventListener('input', (e) => { laborRows[idx].rate = e.target.value; updateLaborInfo(); updateSummary(); });
+      div.querySelector('.row-remove').addEventListener('click', () => { laborRows.splice(idx, 1); renderLaborRows(); });
+    });
+    updateLaborInfo();
+    updateSummary();
+  }
+
+  function updateLaborInfo(){
+    laborRows.forEach((row, idx) => {
+      const el = document.getElementById(`labor-info-${idx}`);
+      if (!el) return;
+      const cost = laborCostFor(row);
+      el.textContent = (row.day_portion === 'manual' || row.employee_id) ? `${peso(cost)} labor per batch` : '';
+    });
+  }
+
+  // ---------------- Utility rows in item editor ----------------
+  $('add-utility-row-btn').addEventListener('click', () => {
+    utilityRows.push({ utility_id: '', hours_per_batch: 1 });
+    renderUtilityRows();
+  });
+
+  function renderUtilityRows(){
+    const wrap = $('utility-rows');
+    wrap.innerHTML = '';
+    utilityRows.forEach((row, idx) => {
+      const selectable = allUtilities.filter(u => u.is_active || u.id === row.utility_id);
+      const div = document.createElement('div');
+      div.className = 'row-item equipment-row';
+      div.innerHTML = `
+        <select class="ru-utility" data-idx="${idx}">
+          <option value="">Select utility…</option>
+          ${selectable.map(u => `<option value="${u.id}" ${u.id === row.utility_id ? 'selected' : ''}>${u.name} (${peso(u.cost_per_hour)}/hr)</option>`).join('')}
+        </select>
+        <input type="number" class="ru-hours" data-idx="${idx}" step="0.01" min="0" value="${row.hours_per_batch ?? 1}" placeholder="hours/batch" />
+        <button type="button" class="row-remove" data-idx="${idx}">&times;</button>
+      `;
+      wrap.appendChild(div);
+      const info = document.createElement('div');
+      info.id = `util-row-info-${idx}`;
+      info.style.cssText = 'font-size:11.5px;color:var(--muted);margin:-4px 0 10px;';
+      wrap.appendChild(info);
+    });
+    wrap.querySelectorAll('.ru-utility').forEach((el) => el.addEventListener('change', (e) => {
+      utilityRows[+e.target.dataset.idx].utility_id = e.target.value; updateUtilityRowInfo(); updateSummary();
+    }));
+    wrap.querySelectorAll('.ru-hours').forEach((el) => el.addEventListener('input', (e) => {
+      utilityRows[+e.target.dataset.idx].hours_per_batch = e.target.value; updateUtilityRowInfo(); updateSummary();
+    }));
+    wrap.querySelectorAll('.row-remove').forEach((el) => el.addEventListener('click', (e) => {
+      utilityRows.splice(+e.target.dataset.idx, 1); renderUtilityRows();
+    }));
+    updateUtilityRowInfo();
+    updateSummary();
+  }
+
+  function updateUtilityRowInfo(){
+    utilityRows.forEach((row, idx) => {
+      const info = document.getElementById(`util-row-info-${idx}`);
+      if (!info) return;
+      info.textContent = row.utility_id ? `${peso(utilityCostFor(row))} per batch` : '';
+    });
+  }
+
   // ---------------- Cost summary ----------------
   function updateSummary(){
     const yieldQty = parseFloat($('r-yield-qty').value) || 0;
@@ -1015,17 +1332,64 @@
       equipmentCost += (parseFloat(row.uses_per_batch) || 0) * (eq.cost_per_use || 0);
     });
 
-    const total = materialsCost + packagingCost + equipmentCost;
+    const laborCost = laborRows.reduce((a, r) => a + laborCostFor(r), 0);
+    const utilitiesCost = utilityRows.reduce((a, r) => a + utilityCostFor(r), 0);
+
+    const total = materialsCost + packagingCost + equipmentCost + laborCost + utilitiesCost;
     const perUnit = yieldQty > 0 ? total / yieldQty : 0;
     lastPerUnitCost = perUnit;
 
     $('sum-materials').textContent = peso(materialsCost);
     $('sum-packaging').textContent = peso(packagingCost);
     $('sum-equipment').textContent = peso(equipmentCost);
+    $('sum-labor').textContent = peso(laborCost);
+    $('sum-utilities').textContent = peso(utilitiesCost);
     $('sum-total').textContent = peso(total);
     $('sum-unit-label').textContent = yieldUnit || 'unit';
     $('sum-per-unit').textContent = peso(perUnit);
+    updatePricingGuide();
     updateMarkupDisplay();
+    updateTierRatings();
+  }
+
+  // ---------------- Pricing guide ----------------
+  let lastRecommendedPrice = 0;
+  function updatePricingGuide(){
+    $('rec-unit-label').textContent = $('r-yield-unit').value || 'unit';
+    const cost = lastPerUnitCost;
+    const markup = parseFloat($('target-markup').value);
+    if (!(cost > 0) || isNaN(markup)) {
+      lastRecommendedPrice = 0;
+      $('rec-price').textContent = '₱0.00';
+      $('target-rating').innerHTML = '<span style="color:var(--muted);">Add materials and a batch yield to get a recommended price.</span>';
+      return;
+    }
+    // Round up to a whole peso so the recommendation never dips under the target markup.
+    lastRecommendedPrice = Math.ceil(cost * (1 + markup / 100));
+    $('rec-price').textContent = peso(lastRecommendedPrice);
+    $('target-rating').innerHTML = `At ${peso(lastRecommendedPrice)}: ` + ratingHtml(lastRecommendedPrice, cost) + `<br><span style="color:var(--muted);">Cost per unit ${peso(cost)}</span>`;
+  }
+  $('target-markup').addEventListener('input', updatePricingGuide);
+  $('use-rec-price-btn').addEventListener('click', () => {
+    if (!(lastRecommendedPrice > 0)) return;
+    $('add-to-pos-toggle').checked = true;
+    $('pos-fields').style.display = 'block';
+    if ($('bracket-pricing-toggle').checked) {
+      $('bracket-pricing-toggle').checked = false;
+      $('tier-rows-wrap').style.display = 'none';
+      $('pos-price').closest('.field').style.display = 'block';
+    }
+    $('pos-price').value = lastRecommendedPrice.toFixed(2);
+    updateMarkupDisplay();
+    $('pos-price').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  function updateTierRatings(){
+    document.querySelectorAll('.tier-rating').forEach((el) => {
+      const idx = +el.dataset.idx;
+      const t = tierRows[idx];
+      el.innerHTML = t ? ratingHtml(parseFloat(t.price), lastPerUnitCost) : '';
+    });
   }
 
   let lastPerUnitCost = 0;
@@ -1040,17 +1404,7 @@
       return;
     }
 
-    const markupPct = ((price - cost) / cost) * 100;
-    const marginPct = ((price - cost) / price) * 100;
-
-    let label, color;
-    if (markupPct < 0) { label = 'Loss — price is below cost'; color = 'var(--error)'; }
-    else if (markupPct < 20) { label = 'Low'; color = 'var(--warn, #9A6B12)'; }
-    else if (markupPct < 50) { label = 'Fair'; color = 'var(--warn, #9A6B12)'; }
-    else if (markupPct < 100) { label = 'Good'; color = 'var(--success)'; }
-    else { label = 'Healthy'; color = 'var(--success)'; }
-
-    el.innerHTML = `Markup: <strong>${markupPct.toFixed(0)}%</strong> · Margin: ${marginPct.toFixed(0)}% — <span style="color:${color};font-weight:700;">${label}</span> <span style="color:var(--muted);">(cost ${peso(cost)}/unit)</span>`;
+    el.innerHTML = ratingHtml(price, cost) + ` <span style="color:var(--muted);">(cost per unit ${peso(cost)})</span>`;
   }
 
   $('pos-price').addEventListener('input', updateMarkupDisplay);
@@ -1088,11 +1442,16 @@
         <button type="button" class="row-remove" data-idx="${idx}">&times;</button>
       `;
       wrap.appendChild(div);
+      const rating = document.createElement('div');
+      rating.className = 'tier-rating';
+      rating.dataset.idx = idx;
+      wrap.appendChild(rating);
     });
     wrap.querySelectorAll('.tier-min').forEach(el => el.addEventListener('input', (e) => tierRows[+e.target.dataset.idx].min_qty = e.target.value));
     wrap.querySelectorAll('.tier-max').forEach(el => el.addEventListener('input', (e) => tierRows[+e.target.dataset.idx].max_qty = e.target.value));
-    wrap.querySelectorAll('.tier-price').forEach(el => el.addEventListener('input', (e) => tierRows[+e.target.dataset.idx].price = e.target.value));
+    wrap.querySelectorAll('.tier-price').forEach(el => el.addEventListener('input', (e) => { tierRows[+e.target.dataset.idx].price = e.target.value; updateTierRatings(); }));
     wrap.querySelectorAll('.row-remove').forEach(el => el.addEventListener('click', (e) => { tierRows.splice(+e.target.dataset.idx, 1); renderTierRows(); }));
+    updateTierRatings();
   }
 
   // ---------------- Save recipe ----------------
@@ -1118,6 +1477,8 @@
       if (error) { showMsg(msg, 'Could not save: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'Save Item'; return; }
       await supabase.from('recipe_ingredients').delete().eq('recipe_id', recipeId);
       await supabase.from('recipe_equipment').delete().eq('recipe_id', recipeId);
+      await supabase.from('recipe_labor').delete().eq('recipe_id', recipeId);
+      await supabase.from('recipe_utilities').delete().eq('recipe_id', recipeId);
     } else {
       const { data: newRecipe, error } = await supabase.from('recipes').insert({
         business_id: businessId, name, description, batch_mode: batchMode, yield_qty: yieldQty, yield_unit: yieldUnit, is_seed_template: false,
@@ -1140,6 +1501,24 @@
     if (validEquipment.length > 0) {
       await supabase.from('recipe_equipment').insert(validEquipment.map(r => ({
         recipe_id: recipeId, equipment_id: r.equipment_id, uses_per_batch: parseFloat(r.uses_per_batch),
+      })));
+    }
+
+    const validLabor = laborRows.filter(r => r.day_portion === 'manual' ? (r.staff_name || '').trim() : r.employee_id);
+    if (validLabor.length > 0) {
+      await supabase.from('recipe_labor').insert(validLabor.map(r => ({
+        recipe_id: recipeId,
+        employee_id: r.day_portion === 'manual' ? null : r.employee_id,
+        staff_name: r.day_portion === 'manual' ? r.staff_name.trim() : null,
+        day_portion: r.day_portion,
+        rate: laborCostFor(r),
+      })));
+    }
+
+    const validUtilities = utilityRows.filter(r => r.utility_id && parseFloat(r.hours_per_batch) > 0);
+    if (validUtilities.length > 0) {
+      await supabase.from('recipe_utilities').insert(validUtilities.map(r => ({
+        recipe_id: recipeId, utility_id: r.utility_id, hours_per_batch: parseFloat(r.hours_per_batch),
       })));
     }
 
@@ -1393,6 +1772,141 @@
   }
 
   // ---------------- Init ----------------
+  // ---------------- Utilities tab ----------------
+  let editingUtilityId = null;
+  let utilMode = 'manual';
+  const MODE_LABEL = { manual: 'Entered manually', monthly_bill: 'Monthly bill ÷ hours', watts: 'Watts × rate' };
+
+  function computeUtilityDraft(){
+    const n = (id) => parseFloat($(id).value) || 0;
+    let cph = 0, rate = null;
+    if (utilMode === 'manual') cph = n('u-cost-hour');
+    else if (utilMode === 'monthly_bill') cph = n('u-hours') > 0 ? n('u-bill') / n('u-hours') : 0;
+    else {
+      rate = $('u-rate-source').value === 'bill' ? (n('u-kwh') > 0 ? n('u-bill2') / n('u-kwh') : 0) : n('u-rate');
+      cph = (n('u-watts') / 1000) * rate;
+    }
+    return { cph, rate };
+  }
+
+  function updateUtilityComputed(){
+    const { cph, rate } = computeUtilityDraft();
+    let text = '';
+    if (utilMode === 'watts' && rate) text = `Rate ${peso(rate)} per kWh · `;
+    $('u-computed').textContent = cph > 0 ? `${text}Cost per hour: ₱${cph.toFixed(4)}` : (utilMode === 'manual' ? '' : 'Fill in the fields above to compute the cost per hour.');
+  }
+
+  function setUtilMode(mode){
+    utilMode = mode;
+    document.querySelectorAll('.u-mode-btn').forEach(b => b.classList.toggle('selected', b.dataset.mode === mode));
+    $('u-manual-fields').style.display = mode === 'manual' ? 'block' : 'none';
+    $('u-bill-fields').style.display = mode === 'monthly_bill' ? 'block' : 'none';
+    $('u-watts-fields').style.display = mode === 'watts' ? 'block' : 'none';
+    updateUtilityComputed();
+  }
+  document.querySelectorAll('.u-mode-btn').forEach(b => b.addEventListener('click', () => setUtilMode(b.dataset.mode)));
+  ['u-cost-hour','u-bill','u-hours','u-watts','u-rate','u-bill2','u-kwh'].forEach(id => $(id).addEventListener('input', updateUtilityComputed));
+  $('u-rate-source').addEventListener('change', () => {
+    const bill = $('u-rate-source').value === 'bill';
+    $('u-rate-direct').style.display = bill ? 'none' : 'block';
+    $('u-rate-bill').style.display = bill ? 'grid' : 'none';
+    updateUtilityComputed();
+  });
+
+  function openUtilityEditor(u){
+    editingUtilityId = u ? u.id : null;
+    $('utility-editor-title').textContent = u ? `Edit — ${u.name}` : 'New utility';
+    hideMsg($('utility-msg'));
+    $('u-name').value = u ? u.name : '';
+    $('u-cost-hour').value = u && u.calc_mode === 'manual' ? u.cost_per_hour : '';
+    $('u-bill').value = u && u.calc_mode === 'monthly_bill' ? (u.monthly_bill ?? '') : '';
+    $('u-hours').value = u && u.calc_mode === 'monthly_bill' ? (u.monthly_hours ?? '') : '';
+    $('u-watts').value = u && u.calc_mode === 'watts' ? (u.watts ?? '') : '';
+    const viaBill = !!(u && u.calc_mode === 'watts' && u.monthly_bill && u.monthly_kwh);
+    $('u-rate-source').value = viaBill ? 'bill' : 'rate';
+    $('u-rate').value = u && u.calc_mode === 'watts' && !viaBill ? (u.rate_per_kwh ?? '') : '';
+    $('u-bill2').value = viaBill ? u.monthly_bill : '';
+    $('u-kwh').value = viaBill ? u.monthly_kwh : '';
+    $('u-rate-direct').style.display = viaBill ? 'none' : 'block';
+    $('u-rate-bill').style.display = viaBill ? 'grid' : 'none';
+    $('u-notes').value = u ? (u.notes || '') : '';
+    $('u-active').checked = u ? !!u.is_active : true;
+    setUtilMode(u ? u.calc_mode : 'manual');
+    $('utility-editor-card').classList.add('show');
+    $('utility-editor-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  $('toggle-add-utility-btn').addEventListener('click', () => openUtilityEditor(null));
+  $('cancel-utility-btn').addEventListener('click', () => $('utility-editor-card').classList.remove('show'));
+
+  $('save-utility-btn').addEventListener('click', async () => {
+    const msg = $('utility-msg');
+    hideMsg(msg);
+    const name = $('u-name').value.trim();
+    if (!name) return showMsg(msg, 'Utility name is required.', 'error');
+    const { cph, rate } = computeUtilityDraft();
+    if (!(cph > 0)) return showMsg(msg, 'The cost per hour works out to zero — please check the numbers.', 'error');
+    const n = (id) => parseFloat($(id).value);
+    const viaBill = utilMode === 'watts' && $('u-rate-source').value === 'bill';
+    const row = {
+      name,
+      calc_mode: utilMode,
+      monthly_bill: utilMode === 'monthly_bill' ? n('u-bill') : (viaBill ? n('u-bill2') : null),
+      monthly_hours: utilMode === 'monthly_bill' ? n('u-hours') : null,
+      watts: utilMode === 'watts' ? n('u-watts') : null,
+      rate_per_kwh: utilMode === 'watts' ? Math.round(rate * 10000) / 10000 : null,
+      monthly_kwh: viaBill ? n('u-kwh') : null,
+      cost_per_hour: Math.round(cph * 10000) / 10000,
+      notes: $('u-notes').value.trim() || null,
+      is_active: $('u-active').checked,
+      updated_at: new Date().toISOString(),
+    };
+    const btn = $('save-utility-btn');
+    btn.disabled = true;
+    let error;
+    if (editingUtilityId) ({ error } = await supabase.from('utilities').update(row).eq('id', editingUtilityId));
+    else ({ error } = await supabase.from('utilities').insert({ ...row, business_id: businessId }));
+    btn.disabled = false;
+    if (error) return showMsg(msg, 'Could not save: ' + error.message, 'error');
+    $('utility-editor-card').classList.remove('show');
+    await loadUtilitiesList();
+    await loadRecipes();   // costs of items using this utility may have changed
+  });
+
+  async function deleteUtility(u){
+    if (!confirm(`Delete "${u.name}"?`)) return;
+    const { error } = await supabase.from('utilities').delete().eq('id', u.id);
+    if (error) {
+      if (confirm(`"${u.name}" is used by one or more items, so it can't be deleted.\n\nMark it inactive instead? It will stay on those items but won't be offered for new ones.`)) {
+        await supabase.from('utilities').update({ is_active: false }).eq('id', u.id);
+      }
+    }
+    await loadUtilitiesList();
+    await loadRecipes();
+  }
+
+  function renderUtilityTable(){
+    const tbody = $('utility-tbody');
+    tbody.innerHTML = '';
+    $('utility-empty').style.display = allUtilities.length ? 'none' : 'block';
+    allUtilities.forEach((u) => {
+      let basis = MODE_LABEL[u.calc_mode] || '';
+      if (u.calc_mode === 'monthly_bill') basis = `${peso(u.monthly_bill)} ÷ ${u.monthly_hours} hrs/month`;
+      if (u.calc_mode === 'watts') basis = `${u.watts} W × ${peso(u.rate_per_kwh)}/kWh`;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${u.name}</strong>${u.is_active ? '' : '<span class="badge-inactive">Inactive</span>'}</td>
+        <td>${basis}</td>
+        <td>${peso(u.cost_per_hour)}/hr</td>
+        <td style="text-align:right;white-space:nowrap;">
+          <button class="btn btn-sm btn-ghost u-edit">Edit</button>
+          <button class="btn btn-sm btn-ghost u-del" style="color:var(--error);">Delete</button>
+        </td>`;
+      tr.querySelector('.u-edit').addEventListener('click', () => openUtilityEditor(u));
+      tr.querySelector('.u-del').addEventListener('click', () => deleteUtility(u));
+      tbody.appendChild(tr);
+    });
+  }
+
   async function init(){
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { window.location.href = 'login.html'; return; }
@@ -1414,7 +1928,7 @@
     $('who-email').textContent = session.user.email;
     updateSidebarLogo(business.logo_url);
 
-    await Promise.all([loadMaterials(), loadEquipmentList(), loadProductsList()]);
+    await Promise.all([loadMaterials(), loadEquipmentList(), loadProductsList(), loadEmployeesList(), loadUtilitiesList()]);
     await loadRecipes();
 
     $('splash').style.display = 'none';

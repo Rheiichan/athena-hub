@@ -159,7 +159,6 @@
       </a>
       <a class="nav-item" href="employees.html">
         <span class="nav-item-main"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><circle cx="17.5" cy="9" r="2.3"/><path d="M15 20a4.5 4.5 0 0 1 6.5-4"/></svg>Employees</span>
-        <span class="soon">Soon</span>
       </a>
 
       <p class="nav-section-label">Setup</p>
@@ -275,6 +274,18 @@
         <h2 style="color:var(--error);">Danger zone</h2>
         <p class="sub">Requesting deletion doesn't remove your account immediately — Soaphrodite Labs staff review it first.</p>
         <div id="delete-msg" class="msg"></div>
+
+        <div style="border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+          <strong style="font-size:14px;">Delete all data</strong>
+          <p class="sub" style="margin:4px 0 10px;">Permanently erases everything you've entered — items, materials, equipment, utilities, employees, products, sales, purchase orders, finances and calendar. Your business information (name, contact details, logo, theme) is kept.</p>
+          <button type="button" class="btn" id="wipe-data-btn" style="background:var(--error);color:#fff;">Delete all data</button>
+        </div>
+        <div style="border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+          <strong style="font-size:14px;">Factory reset</strong>
+          <p class="sub" style="margin:4px 0 10px;">Erases all data <em>and</em> clears your business details (contact number, website, BIR number, logo) and resets the theme. Your login and business name stay.</p>
+          <button type="button" class="btn" id="factory-reset-btn" style="background:var(--error);color:#fff;">Factory reset</button>
+        </div>
+
         <button type="button" class="btn" id="request-delete-btn" style="background:var(--error);color:#fff;">Request account deletion</button>
       </div>
 
@@ -508,6 +519,28 @@
 
     showMsg(msg, 'Your deletion request has been sent to Soaphrodite Labs. Staff will follow up with you.', 'success');
   });
+
+  async function runWipe(factory){
+    const msg = $('delete-msg');
+    hideMsg(msg);
+    const word = factory ? 'RESET' : 'DELETE';
+    const what = factory
+      ? 'This will permanently erase ALL your data and clear your business details and theme.'
+      : 'This will permanently erase ALL your data (items, materials, equipment, utilities, employees, products, sales, orders, finances, calendar). Business information is kept.';
+    const typed = prompt(what + '\n\nThis cannot be undone. Type ' + word + ' to confirm:');
+    if (typed === null) return;
+    if (typed.trim() !== word) { showMsg(msg, 'Confirmation text did not match — nothing was deleted.', 'error'); return; }
+    const btn = factory ? $('factory-reset-btn') : $('wipe-data-btn');
+    const label = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Working…';
+    const { error } = await supabase.rpc('fn_delete_all_business_data', { p_factory_reset: factory });
+    btn.disabled = false; btn.textContent = label;
+    if (error) { showMsg(msg, 'Could not complete: ' + error.message, 'error'); return; }
+    showMsg(msg, factory ? 'Factory reset complete. Reloading…' : 'All data deleted. Your business information was kept.', 'success');
+    if (factory) setTimeout(() => window.location.reload(), 1200);
+  }
+  $('wipe-data-btn').addEventListener('click', () => runWipe(false));
+  $('factory-reset-btn').addEventListener('click', () => runWipe(true));
 
   $('sign-out').addEventListener('click', signOutAndRedirect);
   $('sign-out-mobile').addEventListener('click', signOutAndRedirect);
