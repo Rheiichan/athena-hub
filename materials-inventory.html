@@ -38,7 +38,7 @@
   .mobile-backdrop.show{display:block;}
   .hamburger-btn{background:none;border:none;color:var(--sidebar-ink);cursor:pointer;padding:4px;display:flex;align-items:center;}
 
-  .biz-name{font-family:Arial,sans-serif;font-weight:600;font-size:19px;color:var(--sidebar-ink);margin:2px 0 26px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.12);line-height:1.25;text-align:center;}
+  .biz-name{font-family:Arial,sans-serif;font-weight:600;font-size:19px;color:var(--sidebar-ink);margin:2px 0 26px;padding-bottom:18px;border-bottom:1px solid var(--sidebar-line);line-height:1.25;text-align:center;}
   .sidebar-logo{width:56px;height:56px;border-radius:12px;object-fit:cover;margin:0 auto 10px;display:none;}
   .sidebar-logo.show{display:block;}
   .powered-by{font-size:10.5px;color:var(--accent);text-align:center;margin:16px 0 0;line-height:1.4;}
@@ -47,16 +47,16 @@
   .nav-section-label{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--sidebar-muted);margin:16px 0 6px;padding:0 10px;}
   .nav-section-label:first-child{margin-top:0;}
   .nav-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:8px;font-size:14px;color:var(--sidebar-ink);cursor:pointer;}
-  .nav-item:hover{background:rgba(255,255,255,.08);}
-  .nav-item.active{background:rgba(255,255,255,.18);}
-  .nav-item .soon{font-size:10px;color:var(--sidebar-muted);border:1px solid rgba(255,255,255,.2);padding:1px 6px;border-radius:99px;}
+  .nav-item:hover{background:var(--sidebar-hover);}
+  .nav-item.active{background:var(--sidebar-active);}
+  .nav-item .soon{font-size:10px;color:var(--sidebar-muted);border:1px solid var(--sidebar-line2);padding:1px 6px;border-radius:99px;}
   .nav-item-main{display:flex;align-items:center;gap:10px;}
   .nav-icon{width:17px;height:17px;flex-shrink:0;opacity:.9;}
 
-  .sidebar-foot{padding-top:16px;border-top:1px solid rgba(255,255,255,.12);}
+  .sidebar-foot{padding-top:16px;border-top:1px solid var(--sidebar-line);}
   .who{font-size:12.5px;color:var(--sidebar-muted);margin-bottom:10px;word-break:break-all;}
-  .signout-btn{width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--sidebar-ink);font-size:13px;cursor:pointer;font-family:inherit;}
-  .signout-btn:hover{background:rgba(255,255,255,.08);}
+  .signout-btn{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--sidebar-line2);background:transparent;color:var(--sidebar-ink);font-size:13px;cursor:pointer;font-family:inherit;}
+  .signout-btn:hover{background:var(--sidebar-hover);}
 
   .mobile-bar{display:none;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--sidebar-bg);color:var(--sidebar-ink);}
   @media (max-width:900px){ .mobile-bar{display:flex;} }
@@ -549,6 +549,7 @@
     yellow: { panel: '#7A5A0C', accent: '#F0D27A', accentDark: '#D9B655', accentSoft: '#FBF3DD', accentInk: '#4A3706' },
     green:  { panel: '#1F5A3B', accent: '#A8D9BE', accentDark: '#7FBE9C', accentSoft: '#E7F4ED', accentInk: '#0F3320' },
     pink:   { panel: '#8C2F5C', accent: '#F0AECD', accentDark: '#D98CAF', accentSoft: '#FBEAF2', accentInk: '#5C1D3B' },
+    pastel_pink: { panel: '#F7D3E1', accent: '#F4B6CD', accentDark: '#E895B7', accentSoft: '#FDF0F5', accentInk: '#7A2A4D', panelInk: '#6B2646', panelMuted: '#9A5A78', panelHover: 'rgba(107,38,70,.08)', panelActive: 'rgba(107,38,70,.16)', panelLine: 'rgba(107,38,70,.16)', panelLine2: 'rgba(107,38,70,.28)' },
   };
 
   function applyTheme(color, mode){
@@ -559,6 +560,12 @@
     root.setProperty('--accent-soft', palette.accentSoft);
     root.setProperty('--accent-ink', palette.accentInk);
     root.setProperty('--sidebar-bg', palette.panel);
+    root.setProperty('--sidebar-ink', palette.panelInk || '#F3EEFA');
+    root.setProperty('--sidebar-muted', palette.panelMuted || '#B9AFC9');
+    root.setProperty('--sidebar-hover', palette.panelHover || 'rgba(255,255,255,.08)');
+    root.setProperty('--sidebar-active', palette.panelActive || 'rgba(255,255,255,.18)');
+    root.setProperty('--sidebar-line', palette.panelLine || 'rgba(255,255,255,.12)');
+    root.setProperty('--sidebar-line2', palette.panelLine2 || 'rgba(255,255,255,.2)');
     if (mode === 'dark') {
       root.setProperty('--bg', '#17151B'); root.setProperty('--card', '#211E27');
       root.setProperty('--ink', '#F3EEFA'); root.setProperty('--muted', '#A79FB3'); root.setProperty('--line', '#37333F');
