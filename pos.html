@@ -286,7 +286,11 @@
           </div>
 
           <div class="cart-panel">
-            <h3>Current Sale</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">
+              <h3 style="margin:0;">Current Sale</h3>
+              <button type="button" class="btn btn-ghost btn-sm" id="add-temp-btn">+ Temp item</button>
+            </div>
+            <div id="cart-top-msg" class="msg" style="margin-bottom:8px;"></div>
             <div id="cart-lines"></div>
             <div class="cart-empty" id="cart-empty">Cart is empty — tap a product to add it.</div>
 
@@ -309,12 +313,18 @@
                 <label for="invoice-vat-pct">VAT %</label>
                 <input type="number" id="invoice-vat-pct" step="0.01" min="0" placeholder="e.g. 12" />
               </div>
+              <div class="field" style="margin-bottom:0;">
+                <label>Deductions</label>
+                <div id="deduction-rows"></div>
+                <button type="button" class="btn btn-ghost btn-sm" id="add-deduction-btn">+ Add deduction</button>
+              </div>
             </div>
 
             <div id="cart-summary" style="display:none;margin-top:12px;">
               <div class="summary-line"><span>Subtotal</span><span id="sum-subtotal">₱0.00</span></div>
               <div class="summary-line" id="sum-discount-row" style="display:none;"><span>Discount</span><span id="sum-discount">-₱0.00</span></div>
               <div class="summary-line" id="sum-vat-row" style="display:none;"><span>VAT</span><span id="sum-vat">+₱0.00</span></div>
+              <div class="summary-line" id="sum-deduction-row" style="display:none;"><span>Deductions</span><span id="sum-deduction">-₱0.00</span></div>
             </div>
             <div class="cart-total-row" id="cart-total-row" style="display:none;">
               <span>Total</span>
@@ -359,6 +369,8 @@
               </div>
               <div id="checkout-msg" class="msg"></div>
               <button type="button" class="btn btn-ghost" id="view-invoice-btn" style="width:100%;margin-bottom:8px;">View Invoice</button>
+              <button type="button" class="btn btn-ghost" id="save-draft-btn" style="width:100%;margin-bottom:8px;">Save as Draft</button>
+              <button type="button" class="btn btn-ghost" id="cancel-draft-edit-btn" style="width:100%;margin-bottom:8px;display:none;">Cancel editing draft</button>
               <button class="btn" id="checkout-btn" style="width:100%;">Complete Sale</button>
             </div>
           </div>
@@ -424,6 +436,34 @@
 </div>
 
 <!-- TRANSACTION DETAIL MODAL -->
+<div class="modal-overlay" id="temp-modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="temp-modal-close">&times;</button>
+    <h3>Add temporary item</h3>
+    <p class="sub">For one-off items that aren't in your POS list. No stock is deducted.</p>
+    <div class="field">
+      <label for="temp-name">Item name</label>
+      <input type="text" id="temp-name" placeholder="e.g. Gift wrapping" />
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="temp-price">Price (₱)</label>
+        <input type="number" id="temp-price" step="0.01" min="0" placeholder="0.00" />
+      </div>
+      <div class="field">
+        <label for="temp-qty">Quantity</label>
+        <input type="number" id="temp-qty" step="1" min="1" value="1" />
+      </div>
+    </div>
+    <div class="toggle-row" style="display:flex;align-items:flex-start;gap:8px;margin:4px 0 14px;">
+      <input type="checkbox" id="temp-save-pos" style="width:16px;height:16px;margin-top:3px;" />
+      <label for="temp-save-pos" style="margin:0;font-size:13px;font-weight:500;">Also save this to my POS products<br><span style="font-weight:400;color:var(--muted);font-size:12px;">It will appear in the product list (with 0 stock until you add some in Product Inventory).</span></label>
+    </div>
+    <div id="temp-msg" class="msg"></div>
+    <button type="button" class="btn" id="temp-add-btn" style="width:100%;">Add to sale</button>
+  </div>
+</div>
+
 <div class="modal-overlay" id="txn-modal-overlay">
   <div class="modal">
     <button class="modal-close" id="txn-modal-close">&times;</button>
@@ -434,6 +474,7 @@
       <span>Total</span>
       <span id="txn-total"></span>
     </div>
+    <button class="btn" id="txn-edit-draft-btn" style="width:100%;margin-top:14px;display:none;">Edit draft</button>
     <button class="btn btn-ghost" id="txn-view-invoice-btn" style="width:100%;margin-top:14px;">View Invoice</button>
     <div id="txn-delete-msg" class="msg" style="margin-top:10px;"></div>
     <button class="btn btn-ghost" id="txn-delete-btn" style="width:100%;margin-top:8px;color:var(--error);">Delete Sale — restore stock</button>
@@ -506,7 +547,11 @@
   // ---------------- State ----------------
   let allProducts = [];
   let priceTiers = {};   // product_id -> [{min_qty, max_qty, price}] (products only; packaging has no tiers)
-  let cart = [];         // [{id, kind, name, qty, unit_price, current_stock}]
+  let cart = [];         // [{id, kind, name, qty, unit_price, current_stock}]  (kind: product | packaging | custom)
+  let deductions = [];   // [{name, amount}]
+  let currentDraftId = null;
+  let tempSeq = 1;
+  const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   function priceForQty(item, qty){
     if (item.kind === 'product') {
@@ -605,7 +650,7 @@
     } else {
       if (newQty > line.current_stock) { alert(`Only ${line.current_stock} in stock.`); return; }
       line.qty = newQty;
-      line.unit_price = priceForQty(item, newQty);
+      if (item) line.unit_price = priceForQty(item, newQty);
     }
     renderCart();
   }
@@ -646,7 +691,7 @@
           : `${peso(line.unit_price)} each`;
       row.innerHTML = `
         <div>
-          <div class="cart-line-name">${line.name}</div>
+          <div class="cart-line-name">${esc(line.name)}${line.kind === 'custom' ? ' <span style="font-size:10px;font-weight:700;color:var(--accent-ink);background:var(--accent-soft);padding:1px 6px;border-radius:99px;">TEMP</span>' : ''}</div>
           <div class="cart-line-price">${priceLine}</div>
         </div>
         <div class="cart-qty-ctrl">
@@ -683,6 +728,38 @@
     return { base, discountAmt, total, effectiveUnitPrice: line.qty > 0 ? total / line.qty : 0 };
   }
 
+  // Deductions come off the final amount (after discount and VAT) and can't push it below zero.
+  function computeDeductions(base){
+    const list = deductions
+      .map(d => ({ name: (d.name || '').trim() || 'Deduction', amount: parseFloat(d.amount) || 0 }))
+      .filter(d => d.amount > 0);
+    const raw = list.reduce((a, d) => a + d.amount, 0);
+    return { list, total: Math.min(raw, Math.max(0, base)) };
+  }
+
+  function renderDeductionRows(){
+    const wrap = $('deduction-rows');
+    wrap.innerHTML = '';
+    deductions.forEach((d, idx) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:grid;grid-template-columns:1fr 96px auto;gap:6px;margin-bottom:6px;align-items:center;';
+      row.innerHTML = `
+        <input type="text" class="ded-name" placeholder="Description (e.g. Downpayment)" value="${esc(d.name)}" />
+        <input type="number" class="ded-amount" step="0.01" min="0" placeholder="₱ amount" value="${d.amount ?? ''}" />
+        <button type="button" class="row-remove" style="background:none;border:none;color:var(--error);font-size:20px;cursor:pointer;line-height:1;">&times;</button>`;
+      row.querySelector('.ded-name').addEventListener('input', (e) => { deductions[idx].name = e.target.value; });
+      row.querySelector('.ded-amount').addEventListener('input', (e) => { deductions[idx].amount = e.target.value; renderCart(); });
+      row.querySelector('.row-remove').addEventListener('click', () => { deductions.splice(idx, 1); renderDeductionRows(); renderCart(); });
+      wrap.appendChild(row);
+    });
+  }
+  $('add-deduction-btn').addEventListener('click', () => {
+    deductions.push({ name: '', amount: '' });
+    renderDeductionRows();
+    const names = document.querySelectorAll('.ded-name');
+    if (names.length) names[names.length - 1].focus();
+  });
+
   function updateSummary(subtotal){
     const discountType = $('invoice-discount-type').value;
     const discountValue = parseFloat($('invoice-discount-value').value) || 0;
@@ -693,8 +770,11 @@
     const afterDiscount = Math.max(0, subtotal - discountAmount);
     const vatPct = parseFloat($('invoice-vat-pct').value) || 0;
     const vatAmount = afterDiscount * vatPct / 100;
-    const total = afterDiscount + vatAmount;
+    const ded = computeDeductions(afterDiscount + vatAmount);
+    const total = afterDiscount + vatAmount - ded.total;
 
+    $('sum-deduction-row').style.display = ded.total > 0 ? 'flex' : 'none';
+    $('sum-deduction').textContent = '-' + peso(ded.total);
     $('sum-subtotal').textContent = peso(subtotal);
     $('sum-discount-row').style.display = discountAmount > 0 ? 'flex' : 'none';
     $('sum-discount').textContent = '-' + peso(discountAmount);
@@ -833,7 +913,7 @@
     doc.setTextColor(30, 26, 36);
     doc.setFontSize(18);
     doc.setFont('NotoSans', 'bold');
-    doc.text('INVOICE', 15, 45);
+    doc.text(saleData.isDraft ? 'DRAFT INVOICE' : 'INVOICE', 15, 45);
 
     doc.setFontSize(10);
     doc.setFont('NotoSans', 'normal');
@@ -901,6 +981,12 @@
       y += 6.5;
     }
 
+    (saleData.deductions || []).forEach((d) => {
+      doc.text('Less: ' + d.name, colPrice, y, { align: 'right' });
+      doc.text('-' + peso(d.amount), colTotal, y, { align: 'right' });
+      y += 6.5;
+    });
+
     y += 3;
     doc.setFont('NotoSans', 'bold');
     doc.setFontSize(13);
@@ -913,6 +999,7 @@
     doc.setFont('NotoSans', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(150, 145, 160);
+    if (saleData.isDraft) doc.text('DRAFT — not a final invoice. Amounts may change.', pageWidth / 2, pageHeight - 18, { align: 'center' });
     doc.text('Athena Business Hub by Soaphrodite Labs', pageWidth / 2, pageHeight - 12, { align: 'center' });
 
     return doc;
@@ -931,6 +1018,9 @@
       discountAmount: calc.discountAmount,
       vatPct: calc.vatPct,
       vatAmount: calc.vatAmount,
+      deductions: calc.deductions,
+      deductionTotal: calc.deductionTotal,
+      isDraft: !!currentDraftId,
       total: calc.total,
     };
   }
@@ -963,10 +1053,108 @@
     const afterDiscount = Math.max(0, subtotal - discountAmount);
     const vatPct = parseFloat($('invoice-vat-pct').value) || 0;
     const vatAmount = afterDiscount * vatPct / 100;
-    const total = afterDiscount + vatAmount;
+    const ded = computeDeductions(afterDiscount + vatAmount);
+    const total = afterDiscount + vatAmount - ded.total;
 
-    return { lineResults, subtotal, discountType, discountValue, discountAmount, vatPct, vatAmount, total };
+    return { lineResults, subtotal, discountType, discountValue, discountAmount, vatPct, vatAmount,
+             deductions: ded.list, deductionTotal: ded.total, total };
   }
+
+  function resetSaleForm(){
+    cart = [];
+    deductions = [];
+    currentDraftId = null;
+    $('order-number').value = '';
+    $('customer-name').value = '';
+    $('invoice-discount-type').value = '';
+    $('invoice-discount-value').value = '';
+    $('invoice-discount-value').disabled = true;
+    $('invoice-vat-pct').value = '';
+    renderDeductionRows();
+    updateDraftUi();
+    renderCart();
+  }
+
+  function updateDraftUi(){
+    $('save-draft-btn').textContent = currentDraftId ? 'Update Draft' : 'Save as Draft';
+    $('cancel-draft-edit-btn').style.display = currentDraftId ? 'block' : 'none';
+    $('checkout-btn').textContent = currentDraftId ? 'Finalize & Complete Sale' : 'Complete Sale';
+    if (currentDraftId) showMsg($('cart-top-msg'), 'Editing a draft — it is not final yet. No stock is deducted until you complete the sale.', 'success');
+    else hideMsg($('cart-top-msg'));
+  }
+
+  function buildItemsPayload(calc){
+    return calc.lineResults.map(r => ({
+      kind: r.line.kind, id: r.line.id, name: r.line.name, qty: r.line.qty,
+      unit_price: r.effectiveUnitPrice,
+      original_unit_price: r.line.unit_price,
+      is_free: r.line.is_free,
+      line_discount: r.discountAmt,
+    }));
+  }
+
+  $('save-draft-btn').addEventListener('click', async () => {
+    const msg = $('checkout-msg');
+    hideMsg(msg);
+    if (cart.length === 0) return;
+    const btn = $('save-draft-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const calc = computeInvoiceTotals();
+    const { error } = await supabase.rpc('fn_save_pos_draft', {
+      p_draft_id: currentDraftId,
+      p_items: buildItemsPayload(calc),
+      p_payment_method: $('payment-method').value,
+      p_order_number: $('order-number').value,
+      p_customer_name: $('customer-name').value.trim() || null,
+      p_sales_channel: $('sales-channel').value,
+      p_sale_date: $('sale-date').value || new Date().toISOString().slice(0, 10),
+      p_subtotal: calc.subtotal, p_discount_type: calc.discountType, p_discount_value: calc.discountValue,
+      p_discount_amount: calc.discountAmount, p_vat_pct: calc.vatPct, p_vat_amount: calc.vatAmount,
+      p_total: calc.total, p_deductions: calc.deductions, p_deduction_total: calc.deductionTotal,
+    });
+    btn.disabled = false;
+    updateDraftUi();
+    if (error) { showMsg(msg, 'Could not save draft: ' + error.message, 'error'); return; }
+    resetSaleForm();
+    showMsg($('cart-top-msg'), 'Draft saved. Find it under Sales History — you can edit it any time.', 'success');
+  });
+
+  $('cancel-draft-edit-btn').addEventListener('click', () => { resetSaleForm(); });
+
+  // ---------------- Temporary items ----------------
+  $('add-temp-btn').addEventListener('click', () => {
+    $('temp-name').value = ''; $('temp-price').value = ''; $('temp-qty').value = '1';
+    $('temp-save-pos').checked = false;
+    hideMsg($('temp-msg'));
+    $('temp-modal-overlay').classList.add('show');
+    $('temp-name').focus();
+  });
+  $('temp-modal-close').addEventListener('click', () => $('temp-modal-overlay').classList.remove('show'));
+  $('temp-modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'temp-modal-overlay') $('temp-modal-overlay').classList.remove('show'); });
+
+  $('temp-add-btn').addEventListener('click', async () => {
+    const msg = $('temp-msg');
+    hideMsg(msg);
+    const name = $('temp-name').value.trim();
+    const price = parseFloat($('temp-price').value);
+    const qty = parseFloat($('temp-qty').value) || 1;
+    if (!name) return showMsg(msg, 'Please enter the item name.', 'error');
+    if (isNaN(price) || price < 0) return showMsg(msg, 'Please enter a valid price.', 'error');
+    if (qty <= 0) return showMsg(msg, 'Quantity must be at least 1.', 'error');
+
+    if ($('temp-save-pos').checked) {
+      const btn = $('temp-add-btn');
+      btn.disabled = true;
+      const { error } = await supabase.from('products').insert({ business_id: businessInfo.id, name, price, is_active: true });
+      btn.disabled = false;
+      if (error) return showMsg(msg, 'Could not save to POS products: ' + error.message, 'error');
+      await loadProductGrid();
+    }
+
+    cart.push({ id: 'tmp-' + (tempSeq++), kind: 'custom', name, qty, unit_price: price, current_stock: Infinity, is_free: false, discount_type: null, discount_value: 0 });
+    $('temp-modal-overlay').classList.remove('show');
+    renderCart();
+  });
 
   $('checkout-btn').addEventListener('click', async () => {
     const msg = $('checkout-msg');
@@ -977,13 +1165,13 @@
     btn.disabled = true; btn.textContent = 'Processing…';
 
     const calc = computeInvoiceTotals();
-    const items = calc.lineResults.map(r => ({
-      kind: r.line.kind, id: r.line.id, qty: r.line.qty,
-      unit_price: r.effectiveUnitPrice,
-      original_unit_price: r.line.unit_price,
-      is_free: r.line.is_free,
-      line_discount: r.discountAmt,
-    }));
+    const short = cart.find(l => l.kind !== 'custom' && l.qty > l.current_stock);
+    if (short) {
+      btn.disabled = false; btn.textContent = currentDraftId ? 'Finalize & Complete Sale' : 'Complete Sale';
+      showMsg(msg, `Not enough stock for "${short.name}" (only ${short.current_stock} available). Lower the quantity to continue.`, 'error');
+      return;
+    }
+    const items = buildItemsPayload(calc);
     const paymentMethod = $('payment-method').value;
     const orderNumber = $('order-number').value;
     const customerName = $('customer-name').value.trim() || null;
@@ -997,9 +1185,11 @@
       p_subtotal: calc.subtotal, p_discount_type: calc.discountType, p_discount_value: calc.discountValue,
       p_discount_amount: calc.discountAmount, p_vat_pct: calc.vatPct, p_vat_amount: calc.vatAmount,
       p_total: calc.total,
+      p_deductions: calc.deductions, p_deduction_total: calc.deductionTotal,
+      p_draft_id: currentDraftId,
     });
 
-    btn.disabled = false; btn.textContent = 'Complete Sale';
+    btn.disabled = false; updateDraftUi();
 
     if (error) {
       showMsg(msg, 'Could not complete sale: ' + error.message, 'error');
@@ -1008,22 +1198,16 @@
 
     $('receipt-sub').textContent = `${orderNumber} · ${fmtDate(new Date().toISOString())} · ${paymentMethod.replace('_', ' ')}`;
     $('receipt-lines').innerHTML = calc.lineResults.map(r => `
-      <div class="receipt-line"><span>${r.line.qty} × ${r.line.name}${r.line.is_free ? ' (FREE)' : ''}</span><span>${peso(r.total)}</span></div>
+      <div class="receipt-line"><span>${r.line.qty} × ${esc(r.line.name)}${r.line.is_free ? ' (FREE)' : ''}</span><span>${peso(r.total)}</span></div>
     `).join('')
       + `<div class="receipt-line"><span>Subtotal</span><span>${peso(calc.subtotal)}</span></div>`
       + (calc.discountAmount > 0 ? `<div class="receipt-line"><span>Discount</span><span>-${peso(calc.discountAmount)}</span></div>` : '')
-      + (calc.vatAmount > 0 ? `<div class="receipt-line"><span>VAT (${calc.vatPct}%)</span><span>+${peso(calc.vatAmount)}</span></div>` : '');
+      + (calc.vatAmount > 0 ? `<div class="receipt-line"><span>VAT (${calc.vatPct}%)</span><span>+${peso(calc.vatAmount)}</span></div>` : '')
+      + calc.deductions.map(d => `<div class="receipt-line"><span>Less: ${esc(d.name)}</span><span>-${peso(d.amount)}</span></div>`).join('');
     $('receipt-total').textContent = peso(calc.total);
     $('receipt-modal-overlay').classList.add('show');
 
-    cart = [];
-    $('order-number').value = '';
-    $('customer-name').value = '';
-    $('invoice-discount-type').value = '';
-    $('invoice-discount-value').value = '';
-    $('invoice-discount-value').disabled = true;
-    $('invoice-vat-pct').value = '';
-    renderCart();
+    resetSaleForm();
     await loadProductGrid();
   });
 
@@ -1034,7 +1218,7 @@
   async function loadSalesHistory(){
     const wrap = $('sales-list');
     wrap.innerHTML = '';
-    const { data, error } = await supabase.rpc('fn_list_pos_transactions', { p_limit: 100 });
+    const { data, error } = await supabase.rpc('fn_list_pos_transactions', { p_limit: 100, p_include_drafts: true });
 
     if (error || !data || data.length === 0) {
       $('sales-empty').style.display = 'block';
@@ -1047,10 +1231,10 @@
       row.className = 'sales-row';
       row.innerHTML = `
         <div>
-          <div><strong>${peso(t.total_amount)}</strong> ${t.order_number ? `<span style="color:var(--muted);font-size:11.5px;">${t.order_number}</span>` : ''}</div>
+          <div><strong>${peso(t.total_amount)}</strong>${t.status === 'draft' ? ' <span style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--warn,#9A6B12);background:var(--warn-bg,#FBF1DC);padding:2px 8px;border-radius:99px;margin-left:4px;">Draft</span>' : ''} ${t.order_number ? `<span style="color:var(--muted);font-size:11.5px;">${t.order_number}</span>` : ''}</div>
           <div class="meta">${t.customer_name ? t.customer_name + ' · ' : ''}${(t.payment_method || '').replace('_', ' ')}${t.sales_channel ? ' · ' + t.sales_channel : ''} · ${fmtDate(t.created_at)}</div>
         </div>
-        <div style="color:var(--muted);font-size:12px;">View items →</div>
+        <div style="color:var(--muted);font-size:12px;">${t.status === 'draft' ? 'Edit / view →' : 'View items →'}</div>
       `;
       row.addEventListener('click', () => openTransactionDetail(t));
       wrap.appendChild(row);
@@ -1058,7 +1242,11 @@
   }
 
   async function openTransactionDetail(t){
-    $('txn-modal-sub').textContent = `${t.order_number ? t.order_number + ' · ' : ''}${(t.payment_method || '').replace('_', ' ')} · ${fmtDate(t.created_at)}`;
+    const isDraft = t.status === 'draft';
+    $('txn-modal-title').textContent = isDraft ? 'Draft invoice' : 'Sale details';
+    $('txn-edit-draft-btn').style.display = isDraft ? 'block' : 'none';
+    $('txn-delete-btn').textContent = isDraft ? 'Delete draft' : 'Delete Sale — restore stock';
+    $('txn-modal-sub').textContent = `${isDraft ? 'DRAFT · ' : ''}${t.order_number ? t.order_number + ' · ' : ''}${(t.payment_method || '').replace('_', ' ')} · ${fmtDate(t.created_at)}`;
     $('txn-lines').innerHTML = '<p style="color:var(--muted);font-size:13px;">Loading…</p>';
     $('txn-total').textContent = peso(t.total_amount);
     hideMsg($('txn-delete-msg'));
@@ -1066,9 +1254,16 @@
 
     const { data } = await supabase.rpc('fn_get_pos_transaction_items', { p_transaction_id: t.id });
     const items = data || [];
-    $('txn-lines').innerHTML = items.map(item => `
-      <div class="receipt-line"><span>${item.qty} × ${item.product_name}${item.is_free ? ' (FREE)' : ''}</span><span>${peso(item.is_free ? 0 : item.qty * item.unit_price)}</span></div>
-    `).join('') || '<p style="color:var(--muted);font-size:13px;">No items found.</p>';
+    const dedList = Array.isArray(t.deductions) ? t.deductions : [];
+    $('txn-lines').innerHTML = (items.map(item => `
+      <div class="receipt-line"><span>${item.qty} × ${esc(item.product_name)}${item.is_custom ? ' (temp)' : ''}${item.is_free ? ' (FREE)' : ''}</span><span>${peso(item.is_free ? 0 : item.qty * item.unit_price)}</span></div>
+    `).join('') || '<p style="color:var(--muted);font-size:13px;">No items found.</p>')
+      + dedList.map(d => `<div class="receipt-line"><span>Less: ${esc(d.name)}</span><span>-${peso(d.amount)}</span></div>`).join('');
+
+    $('txn-edit-draft-btn').onclick = () => {
+      if (!loadDraftIntoCart(t, items)) return;
+      $('txn-modal-overlay').classList.remove('show');
+    };
 
     $('txn-view-invoice-btn').onclick = async () => {
       const btn = $('txn-view-invoice-btn');
@@ -1085,6 +1280,8 @@
           discountAmount: t.discount_amount || 0,
           vatPct: t.vat_pct || 0,
           vatAmount: t.vat_amount || 0,
+          deductions: dedList,
+          isDraft,
           total: t.total_amount,
         });
         window.open(doc.output('bloburl'), '_blank');
@@ -1095,7 +1292,9 @@
     };
 
     $('txn-delete-btn').onclick = async () => {
-      const ok = confirm(`Delete this sale (${peso(t.total_amount)})? Stock for every item will be restored, and it will no longer count in Finances. This cannot be undone.`);
+      const ok = confirm(isDraft
+        ? `Delete this draft (${peso(t.total_amount)})? This cannot be undone.`
+        : `Delete this sale (${peso(t.total_amount)})? Stock for every item will be restored, and it will no longer count in Finances. This cannot be undone.`);
       if (!ok) return;
 
       const msg = $('txn-delete-msg');
@@ -1105,7 +1304,7 @@
 
       const { error } = await supabase.rpc('fn_delete_pos_transaction', { p_transaction_id: t.id });
 
-      btn.disabled = false; btn.textContent = 'Delete Sale — restore stock';
+      btn.disabled = false; btn.textContent = isDraft ? 'Delete draft' : 'Delete Sale — restore stock';
 
       if (error) { showMsg(msg, 'Could not delete: ' + error.message, 'error'); return; }
 
@@ -1113,6 +1312,43 @@
       await Promise.all([loadSalesHistory(), loadProductGrid()]);
     };
   }
+  function loadDraftIntoCart(t, items){
+    if (cart.length > 0 && !confirm('Your current sale will be replaced by this draft. Continue?')) return false;
+    resetSaleForm();
+    currentDraftId = t.id;
+    items.forEach((i) => {
+      const unit = i.original_unit_price != null ? Number(i.original_unit_price) : Number(i.unit_price);
+      const base = { qty: Number(i.qty), unit_price: unit, is_free: !!i.is_free,
+        discount_type: Number(i.line_discount) > 0 ? 'fixed' : null, discount_value: Number(i.line_discount) || 0 };
+      if (i.is_custom) {
+        cart.push({ id: 'tmp-' + (tempSeq++), kind: 'custom', name: i.product_name, current_stock: Infinity, ...base });
+      } else {
+        const kind = i.ingredient_id ? 'packaging' : 'product';
+        const liveId = i.ingredient_id || i.product_id;
+        const live = allProducts.find(p => p.id === liveId && p.kind === kind);
+        cart.push({ id: liveId, kind, name: i.product_name, current_stock: live ? Number(live.current_stock) : 0, ...base });
+      }
+    });
+    deductions = (Array.isArray(t.deductions) ? t.deductions : []).map(d => ({ name: d.name, amount: d.amount }));
+    renderDeductionRows();
+    renderCart();   // sets a fresh order number only if empty; overwritten below
+    $('order-number').value = t.order_number || $('order-number').value;
+    $('customer-name').value = t.customer_name || '';
+    $('sale-date').value = t.sale_date || new Date().toISOString().slice(0, 10);
+    if (t.sales_channel) $('sales-channel').value = t.sales_channel;
+    if (t.payment_method) $('payment-method').value = t.payment_method;
+    $('invoice-discount-type').value = t.discount_type || '';
+    $('invoice-discount-value').disabled = !t.discount_type;
+    $('invoice-discount-value').value = t.discount_type ? (t.discount_value ?? '') : '';
+    $('invoice-vat-pct').value = Number(t.vat_pct) > 0 ? t.vat_pct : '';
+    updateDraftUi();
+    renderCart();
+    document.querySelector('.tab[data-tab="sell"]').click();
+    const over = cart.filter(l => l.kind !== 'custom' && l.qty > l.current_stock);
+    if (over.length) showMsg($('cart-top-msg'), 'Editing a draft. Heads up: not enough stock right now for ' + over.map(l => l.name).join(', ') + ' — adjust before completing the sale.', 'error');
+    return true;
+  }
+
   $('txn-modal-close').addEventListener('click', () => $('txn-modal-overlay').classList.remove('show'));
   $('txn-modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'txn-modal-overlay') $('txn-modal-overlay').classList.remove('show'); });
 
